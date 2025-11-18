@@ -11,18 +11,70 @@ void SteamNetworkingManager::OnSteamNetConnectionStatusChanged(SteamNetConnectio
     }
 }
 
-SteamFriendsCallbacks::SteamFriendsCallbacks(SteamNetworkingManager* manager) : manager_(manager) {}
+SteamFriendsCallbacks::SteamFriendsCallbacks(SteamNetworkingManager* manager) : manager_(manager) {
+    std::cout << "SteamFriendsCallbacks constructor called" << std::endl;
+}
 
 void SteamFriendsCallbacks::OnGameRichPresenceJoinRequested(GameRichPresenceJoinRequested_t *pCallback) {
+    std::cout << "GameRichPresenceJoinRequested received" << std::endl;
     if (manager_) {
-        const char* connectStr = SteamFriends()->GetFriendRichPresence(pCallback->m_steamIDFriend, "connect");
+        const char* connectStr = pCallback->m_rgchConnect;
+        std::cout << "Connect string: '" << (connectStr ? connectStr : "null") << "'" << std::endl;
         if (connectStr && connectStr[0] != '\0') {
-            uint64 lobbyID = std::stoull(connectStr);
-            CSteamID lobbySteamID(lobbyID);
-            if (!manager_->isHost() && !manager_->isConnected()) {
-                manager_->joinLobby(lobbySteamID);
+            try {
+                uint64 id = std::stoull(connectStr);
+                std::string str = connectStr;
+                std::cout << "Parsed ID: " << id << std::endl;
+                if (str.find("7656119") == 0) {
+                    // It's a Steam ID, join host directly
+                    std::cout << "Parsed Steam ID: " << id << ", joining host" << std::endl;
+                    if (!manager_->isHost() && !manager_->isConnected()) {
+                        manager_->joinHost(id);
+                        // Start TCP Server if dependencies are set
+                        if (manager_->server_ && !(*manager_->server_)) {
+                            *manager_->server_ = std::make_unique<TCPServer>(8888, manager_);
+                            if (!(*manager_->server_)->start()) {
+                                std::cerr << "Failed to start TCP server" << std::endl;
+                            }
+                        }
+                    } else {
+                        std::cout << "Already host or connected, ignoring join request" << std::endl;
+                    }
+                } else {
+                    // Assume it's a lobby ID
+                    CSteamID lobbySteamID(id);
+                    std::cout << "Parsed lobby ID: " << id << std::endl;
+                    if (!manager_->isHost() && !manager_->isConnected()) {
+                        std::cout << "Joining lobby from invite: " << id << std::endl;
+                        manager_->joinLobby(lobbySteamID);
+                    } else {
+                        std::cout << "Already host or connected, ignoring invite" << std::endl;
+                    }
+                }
+            } catch (const std::exception& e) {
+                std::cerr << "Failed to parse connect string: " << connectStr << " error: " << e.what() << std::endl;
             }
+        } else {
+            std::cerr << "Empty connect string in join request" << std::endl;
         }
+    } else {
+        std::cout << "Manager is null" << std::endl;
+    }
+}
+
+void SteamFriendsCallbacks::OnGameLobbyJoinRequested(GameLobbyJoinRequested_t *pCallback) {
+    std::cout << "GameLobbyJoinRequested received" << std::endl;
+    if (manager_) {
+        CSteamID lobbyID = pCallback->m_steamIDLobby;
+        std::cout << "Lobby ID: " << lobbyID.ConvertToUint64() << std::endl;
+        if (!manager_->isHost() && !manager_->isConnected()) {
+            std::cout << "Joining lobby from request: " << lobbyID.ConvertToUint64() << std::endl;
+            manager_->joinLobby(lobbyID);
+        } else {
+            std::cout << "Already host or connected, ignoring lobby join request" << std::endl;
+        }
+    } else {
+        std::cout << "Manager is null" << std::endl;
     }
 }
 
@@ -30,7 +82,7 @@ SteamNetworkingManager::SteamNetworkingManager()
     : m_pInterface(nullptr), hListenSock(k_HSteamListenSocket_Invalid), g_isHost(false), g_isClient(false), g_isConnected(false),
       g_hConnection(k_HSteamNetConnection_Invalid), g_retryCount(0), g_currentVirtualPort(0),
       io_context_(nullptr), clientMap_(nullptr), clientMutex_(nullptr), server_(nullptr), localPort_(nullptr), messageHandler_(nullptr),
-      steamFriendsCallbacks(this), steamMatchmakingCallbacks(this), currentLobby(k_steamIDNil) {
+      steamFriendsCallbacks(nullptr), steamMatchmakingCallbacks(nullptr), currentLobby(k_steamIDNil) {
     // Initialize connection config
     g_connectionConfig[0].SetInt32(k_ESteamNetworkingConfig_TimeoutInitial, 10000);
     g_connectionConfig[1].SetInt32(k_ESteamNetworkingConfig_NagleTime, 0);
@@ -39,6 +91,8 @@ SteamNetworkingManager::SteamNetworkingManager()
 SteamNetworkingManager::~SteamNetworkingManager() {
     stopMessageHandler();
     delete messageHandler_;
+    delete steamFriendsCallbacks;
+    delete steamMatchmakingCallbacks;
     shutdown();
 }
 
@@ -49,10 +103,21 @@ bool SteamNetworkingManager::initialize() {
         return false;
     }
 
+    // Create callbacks after Steam API init
+    steamFriendsCallbacks = new SteamFriendsCallbacks(this);
+    steamMatchmakingCallbacks = new SteamMatchmakingCallbacks(this);
+
     SteamNetworkingUtils()->InitRelayNetworkAccess();
     SteamNetworkingUtils()->SetGlobalCallback_SteamNetConnectionStatusChanged(OnSteamNetConnectionStatusChanged);
 
     m_pInterface = SteamNetworkingSockets();
+
+    // Clear Rich Presence on startup
+    SteamFriends()->ClearRichPresence();
+    std::cout << "Cleared Rich Presence on startup" << std::endl;
+
+    // Check if callbacks are registered
+    std::cout << "Steam API initialized, callbacks should be registered" << std::endl;
 
     // Get friends list
     int friendCount = SteamFriends()->GetFriendCount(k_EFriendFlagAll);
@@ -73,6 +138,8 @@ void SteamNetworkingManager::shutdown() {
     if (hListenSock != k_HSteamListenSocket_Invalid) {
         m_pInterface->CloseListenSocket(hListenSock);
     }
+    // Clear Rich Presence on shutdown
+    SteamFriends()->ClearRichPresence();
     SteamAPI_Shutdown();
 }
 
@@ -255,6 +322,8 @@ void SteamMatchmakingCallbacks::OnLobbyCreated(LobbyCreated_t *pCallback) {
         std::string lobbyStr = std::to_string(manager_->currentLobby.ConvertToUint64());
         SteamFriends()->SetRichPresence("connect", lobbyStr.c_str());
         SteamFriends()->SetRichPresence("status", "主持游戏房间");
+        SteamFriends()->SetRichPresence("steam_display", "#StatusWithConnectFormat");
+        std::cout << "Set Rich Presence connect to: " << lobbyStr << std::endl;
     } else {
         std::cerr << "Failed to create lobby" << std::endl;
     }

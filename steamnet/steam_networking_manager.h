@@ -22,6 +22,7 @@ class SteamFriendsCallbacks {
 public:
     SteamFriendsCallbacks(SteamNetworkingManager* manager);
     STEAM_CALLBACK(SteamFriendsCallbacks, OnGameRichPresenceJoinRequested, GameRichPresenceJoinRequested_t);
+    STEAM_CALLBACK(SteamFriendsCallbacks, OnGameLobbyJoinRequested, GameLobbyJoinRequested_t);
 private:
     SteamNetworkingManager* manager_;
 };
@@ -122,8 +123,8 @@ private:
 
     // Friends
     std::vector<std::pair<CSteamID, std::string>> friendsList;
-    SteamFriendsCallbacks steamFriendsCallbacks;
-    SteamMatchmakingCallbacks steamMatchmakingCallbacks;
+    SteamFriendsCallbacks* steamFriendsCallbacks;
+    SteamMatchmakingCallbacks* steamMatchmakingCallbacks;
 
     // Message handler dependencies
     boost::asio::io_context* io_context_;

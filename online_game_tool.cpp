@@ -90,8 +90,15 @@ int main() {
             if (filterStr.empty() || nameStr.find(filterStr) != std::string::npos) {
                 ImGui::PushID(friendPair.first.ConvertToUint64());
                 if (ImGui::Button(("邀请 " + friendPair.second).c_str())) {
-                    // Send invite via Steam
-                    SteamFriends()->InviteUserToGame(friendPair.first, "加入我的游戏房间!");
+                    // Send invite via Steam with lobby ID as connect string
+                    std::string connectStr = std::to_string(steamManager.getCurrentLobby().ConvertToUint64());
+                    // Safety check for SteamFriends
+                    if (SteamFriends()) {
+                        SteamFriends()->InviteUserToGame(friendPair.first, connectStr.c_str());
+                        std::cout << "Sent invite to " << friendPair.second << " with connect string: " << connectStr << std::endl;
+                    } else {
+                        std::cerr << "SteamFriends() is null! Cannot send invite." << std::endl;
+                    }
                 }
                 ImGui::PopID();
             }
