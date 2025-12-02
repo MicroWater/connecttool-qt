@@ -23,6 +23,23 @@
         system:
         let
           pkgs = nixpkgsFor.${system};
+          repoRoot = toString ./.;
+          steamworksEnv = builtins.getEnv "STEAMWORKS_PATH_HINT";
+          steamworksSdkEnv = builtins.getEnv "STEAMWORKS_SDK_DIR";
+          steamworksEnvPath =
+            if steamworksEnv != "" then builtins.path { path = steamworksEnv; name = "steamworks-hint"; }
+            else null;
+          steamworksSdkEnvPath =
+            if steamworksSdkEnv != "" then builtins.path { path = steamworksSdkEnv; name = "steamworks-sdk"; }
+            else null;
+          steamworksHint =
+            if steamworksEnvPath != null then steamworksEnvPath
+            else if steamworksSdkEnvPath != null then steamworksSdkEnvPath
+            else repoRoot + "/steamworks";
+          steamworksSdkHint =
+            if steamworksSdkEnvPath != null then steamworksSdkEnvPath
+            else if steamworksEnvPath != null then steamworksEnvPath
+            else repoRoot + "/sdk";
         in
         {
           default = pkgs.stdenv.mkDerivation rec {
@@ -31,11 +48,6 @@
 
             # Keep entire working tree (including untracked) so new sources are present.
             src = ./.; 
-
-            # Use string-based hints so evaluation succeeds even if SDK folders
-            # are not present in the working tree.
-            steamworksHint = "${./.}/steamworks";
-            steamworksSdkHint = "${./.}/sdk";
 
             nativeBuildInputs = with pkgs; [
               cmake
