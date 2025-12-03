@@ -48,11 +48,46 @@ bool SteamNetworkingManager::initialize() {
       &logLevel);
 
   // Increase default reliable send buffer to better handle large bursts
-  int32 sendBufferSize = 8 * 1024 * 1024;
+  int32 sendBufferSize = 2 * 1024 * 1024;
   SteamNetworkingUtils()->SetConfigValue(
       k_ESteamNetworkingConfig_SendBufferSize,
       k_ESteamNetworkingConfig_Global, 0, k_ESteamNetworkingConfig_Int32,
       &sendBufferSize);
+
+  // Receive buffers tuned for moderate bandwidth to avoid runaway queues
+  int32 recvBufferSize = 2 * 1024 * 1024; // 2 MB
+  SteamNetworkingUtils()->SetConfigValue(
+      k_ESteamNetworkingConfig_RecvBufferSize,
+      k_ESteamNetworkingConfig_Global, 0, k_ESteamNetworkingConfig_Int32,
+      &recvBufferSize);
+  int32 recvBufferMsgs = 2048;
+  SteamNetworkingUtils()->SetConfigValue(
+      k_ESteamNetworkingConfig_RecvBufferMessages,
+      k_ESteamNetworkingConfig_Global, 0, k_ESteamNetworkingConfig_Int32,
+      &recvBufferMsgs);
+
+  // Cap send rate to a conservative value to keep reliable window stable
+  int32 sendRate = 3 * 1024 * 1024; // 3 MB/s
+  SteamNetworkingUtils()->SetConfigValue(
+      k_ESteamNetworkingConfig_SendRateMin,
+      k_ESteamNetworkingConfig_Global, 0, k_ESteamNetworkingConfig_Int32,
+      &sendRate);
+  SteamNetworkingUtils()->SetConfigValue(
+      k_ESteamNetworkingConfig_SendRateMax,
+      k_ESteamNetworkingConfig_Global, 0, k_ESteamNetworkingConfig_Int32,
+      &sendRate);
+
+  // Disable Nagle to reduce latency for tunneled traffic
+  int32 nagleTime = 0;
+  SteamNetworkingUtils()->SetConfigValue(
+      k_ESteamNetworkingConfig_NagleTime, k_ESteamNetworkingConfig_Global, 0,
+      k_ESteamNetworkingConfig_Int32, &nagleTime);
+
+  std::cout << "[SteamNet] SendBuffer=" << (sendBufferSize / 1024 / 1024)
+            << "MB, SendRate=" << (sendRate / 1024 / 1024)
+            << "MB/s, RecvBuffer=" << (recvBufferSize / 1024 / 1024)
+            << "MB, RecvMsgs=" << recvBufferMsgs
+            << ", Nagle=" << nagleTime << std::endl;
 
   // 1. 允许 P2P (ICE) 直连
   // 默认情况下 Steam 可能会保守地只允许 LAN，这里设置为 "All" 允许公网 P2P
@@ -67,7 +102,7 @@ bool SteamNetworkingManager::initialize() {
   // 2. (可选) 极度排斥中继
   // 如果你铁了心不想走中继，可以给中继路径增加巨大的虚拟延迟惩罚
   // 这样只有在直连完全打不通（比如防火墙太严格）时，Steam 才会无奈选择中继
-  int32 nSdrPenalty = 10000; // 10000ms 惩罚
+  int32 nSdrPenalty = 0; // 允许中继正常参与路由选择，避免直连打不通时吞吐骤降
   SteamNetworkingUtils()->SetConfigValue(
       k_ESteamNetworkingConfig_P2P_Transport_SDR_Penalty,
       k_ESteamNetworkingConfig_Global, 0, k_ESteamNetworkingConfig_Int32,

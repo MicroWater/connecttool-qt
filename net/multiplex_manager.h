@@ -63,4 +63,5 @@ private:
     std::mutex pausedMutex_;
     std::unordered_set<std::string> sendOrderSet_;
     std::deque<std::string> sendOrder_;
+    std::unordered_map<std::string, std::chrono::steady_clock::time_point> recentConnectFail_;
 };

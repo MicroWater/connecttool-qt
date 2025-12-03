@@ -57,9 +57,9 @@ void SteamMessageHandler::startAsyncPoll() {
     currentConnections = connections_;
   }
   for (auto conn : currentConnections) {
-    ISteamNetworkingMessage *pIncomingMsgs[10];
+    ISteamNetworkingMessage *pIncomingMsgs[256]; // larger batch for throughput
     int numMsgs =
-        m_pInterface_->ReceiveMessagesOnConnection(conn, pIncomingMsgs, 10);
+        m_pInterface_->ReceiveMessagesOnConnection(conn, pIncomingMsgs, 256);
     totalMessages += numMsgs;
     for (int i = 0; i < numMsgs; ++i) {
       ISteamNetworkingMessage *pIncomingMsg = pIncomingMsgs[i];
@@ -76,12 +76,12 @@ void SteamMessageHandler::startAsyncPoll() {
   }
 
   // Adaptive polling: if messages received, poll immediately; otherwise
-  // increase interval
+  // increase interval (keep small to avoid backlog)
   if (totalMessages > 0) {
     currentPollInterval_ = 0; // 有消息，立即轮询
   } else {
-    // 无消息，逐渐增加间隔，最大10ms
-    currentPollInterval_ = std::min(currentPollInterval_ + 1, 10);
+    // 无消息，逐渐增加间隔，最大2ms，优先低延迟
+    currentPollInterval_ = std::min(currentPollInterval_ + 1, 2);
   }
 
   // Schedule next poll

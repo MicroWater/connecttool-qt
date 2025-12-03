@@ -6,10 +6,11 @@
 #include <random>
 
 namespace {
-constexpr std::size_t kTunnelChunkBytes = 32 * 1024;
+// Keep chunks close to path MTU to reduce Steam UDP fragmentation/lock pressure
+constexpr std::size_t kTunnelChunkBytes = 1200; // slightly larger chunks to reduce fragment count
 constexpr std::size_t kSendBufferBytes = 8 * 1024 * 1024;
-constexpr std::size_t kHighWaterBytes = 6 * 1024 * 1024; // throttle before Steam limits
-constexpr std::size_t kLowWaterBytes = 4 * 1024 * 1024;
+constexpr std::size_t kHighWaterBytes = 512 * 1024; // tighter throttling
+constexpr std::size_t kLowWaterBytes = 256 * 1024;
 
 // Simple, local ID generator to avoid pulling in the full nanoid dependency
 std::string generateId(std::size_t length = 6) {
@@ -127,12 +128,28 @@ bool MultiplexManager::trySendPacket(const std::vector<char> &packet) {
   if (packet.empty()) {
     return true;
   }
+
+  SteamNetConnectionRealTimeStatus_t status{};
+  if (steamInterface_->GetConnectionRealTimeStatus(steamConn_, &status, 0,
+                                                   nullptr)) {
+    if (static_cast<std::size_t>(status.m_cbPendingReliable) >=
+        kHighWaterBytes) {
+      lastBlocked_ = std::chrono::steady_clock::now();
+      int current = backoffMs_.load(std::memory_order_relaxed);
+      int next = std::min(current * 2, 200);
+      backoffMs_.store(next, std::memory_order_relaxed);
+      sendBlocked_.store(true, std::memory_order_relaxed);
+      return false;
+    }
+  }
+
   if (isSendSaturated()) {
     return false;
   }
   EResult result = steamInterface_->SendMessageToConnection(
       steamConn_, packet.data(), static_cast<uint32>(packet.size()),
-      k_nSteamNetworkingSend_Reliable, nullptr);
+      k_nSteamNetworkingSend_Reliable | k_nSteamNetworkingSend_NoNagle,
+      nullptr);
   if (result == k_EResultOK) {
     backoffMs_.store(5, std::memory_order_relaxed);
     return true;
@@ -305,7 +322,15 @@ void MultiplexManager::handleTunnelPacket(const char *data, size_t len) {
       std::cout << "Creating new TCP client for id " << id
                 << " connecting to localhost:" << localPort_ << std::endl;
       try {
+        const auto now = std::chrono::steady_clock::now();
+        auto it = recentConnectFail_.find(id);
+        if (it != recentConnectFail_.end() &&
+            now - it->second < std::chrono::seconds(1)) {
+          return; // 最近失败过，避免频繁重试占用 CPU
+        }
         auto newSocket = std::make_shared<tcp::socket>(io_context_);
+        boost::system::error_code ec;
+        newSocket->set_option(tcp::no_delay(true), ec);
         tcp::resolver resolver(io_context_);
         auto endpoints =
             resolver.resolve("127.0.0.1", std::to_string(localPort_));
@@ -321,9 +346,11 @@ void MultiplexManager::handleTunnelPacket(const char *data, size_t len) {
         std::cout << "Successfully created TCP client for id " << id
                   << std::endl;
         startAsyncRead(tempId);
+        recentConnectFail_.erase(id);
       } catch (const std::exception &e) {
         std::cerr << "Failed to create TCP client for id " << id << ": "
                   << e.what() << std::endl;
+        recentConnectFail_[id] = std::chrono::steady_clock::now();
         sendTunnelPacket(id, nullptr, 0, 1);
         return;
       }

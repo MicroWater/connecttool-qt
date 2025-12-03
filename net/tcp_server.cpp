@@ -72,6 +72,9 @@ void TCPServer::start_accept() {
     acceptor_.async_accept(*socket, [this, socket](const boost::system::error_code& error) {
         if (!error) {
             std::cout << "New client connected" << std::endl;
+            // Low latency between local TCP and Steam tunnel
+            boost::system::error_code ec;
+            socket->set_option(tcp::no_delay(true), ec);
             auto multiplexManager = manager_->getMessageHandler()->getMultiplexManager(manager_->getConnection());
             std::string id = multiplexManager->addClient(socket);
             int currentCount = 0;
