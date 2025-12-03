@@ -3,7 +3,6 @@ project(ConnectToolQt LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2)
 find_package(Boost REQUIRED)
 find_package(Threads REQUIRED)
@@ -119,6 +118,11 @@ if(APPLE)
     set_target_properties(connecttool-qt PROPERTIES
         BUILD_RPATH "@loader_path"
         INSTALL_RPATH "@loader_path;@loader_path/../lib")
+elseif(UNIX AND NOT APPLE)
+    # Keep Steam redistributables discoverable when running from build or install tree
+    set_target_properties(connecttool-qt PROPERTIES
+        BUILD_RPATH "\$ORIGIN;\$ORIGIN/.."
+        INSTALL_RPATH "\$ORIGIN;\$ORIGIN/..")
 elseif(WIN32)
     # Ensure DLLs are discoverable on Windows build environments
     set_target_properties(connecttool-qt PROPERTIES

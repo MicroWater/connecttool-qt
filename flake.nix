@@ -65,12 +65,15 @@
             # Keep entire working tree (including untracked) so new sources are present.
             src = ./.;
 
-            nativeBuildInputs = with pkgs; [
-              cmake
-              ninja
-              pkg-config
-              qt6.wrapQtAppsHook
-            ];
+            nativeBuildInputs =
+              with pkgs;
+              [
+                cmake
+                ninja
+                pkg-config
+                qt6.wrapQtAppsHook
+              ]
+              ++ lib.optionals stdenv.isLinux [ patchelf ];
 
             buildInputs =
               (with pkgs.qt6; [
@@ -92,6 +95,11 @@
             configurePhase = "cmake -B build -S . -G Ninja $cmakeFlags";
             buildPhase = "cmake --build build";
             installPhase = "cmake --install build --prefix $out";
+
+            postFixup = pkgs.lib.optionalString pkgs.stdenv.isLinux ''
+              patchelf --force-rpath --set-rpath "\$ORIGIN" $out/bin/libsteam_api.so
+              wrapProgram $out/bin/connecttool-qt --prefix LD_LIBRARY_PATH : "$out/bin"
+            '';
           };
         }
       );
