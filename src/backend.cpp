@@ -505,6 +505,11 @@ void Backend::stopVpn() {
     vpnManager_->clearPeers();
     vpnManager_->stopMessageHandler();
   }
+  vpnBridge_.reset();
+  vpnManager_.reset();
+  if (roomManager_) {
+    roomManager_->setVpnMode(false, nullptr);
+  }
 }
 
 void Backend::syncVpnPeers() {
