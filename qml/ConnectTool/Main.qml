@@ -1049,181 +1049,287 @@ ApplicationWindow {
             opacity: visible ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
 
-            Frame {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                padding: 16
-                Material.elevation: 6
-                background: Rectangle { radius: 12; color: "#111827"; border.color: "#1f2b3c" }
+            RowLayout {
+                anchors.fill: parent
+                spacing: 12
 
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 12
-                    spacing: 12
-                    Label {
-                        text: qsTr("关于")
-                        font.pixelSize: 20
-                        color: "#e6efff"
-                    }
-                    Label {
-                        text: qsTr("ConnectTool 使用 Steam P2P 协助房主与好友建立转发。")
-                        color: "#dce7ff"
-                        font.pixelSize: 14
-                        wrapMode: Text.WordWrap
-                    }
-                    Rectangle {
-                        Layout.fillWidth: true
-                        height: 48
-                        radius: 10
-                        color: "#162033"
-                        border.color: "#1f2b3c"
+                Frame {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.preferredWidth: parent.width * 0.55
+                    padding: 16
+                    Material.elevation: 6
+                    background: Rectangle { radius: 12; color: "#111827"; border.color: "#1f2b3c" }
 
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 10
-
-                            Rectangle {
-                                width: 28
-                                height: 28
-                                radius: 14
-                                color: "#0e121a"
-                                border.color: "#23c9a9"
-                                Image {
-                                    anchors.centerIn: parent
-                                    width: 18
-                                    height: 18
-                                    source: Qt.resolvedUrl("QQ.svg")
-                                    sourceSize.width: 18
-                                    sourceSize.height: 18
-                                    asynchronous: false
-                                    fillMode: Image.PreserveAspectFit
-                                    smooth: true
-                                    mipmap: true
-                                    layer.enabled: true
-                                    layer.effect: ColorOverlay { color: "#23c9a9" }
-                                }
-                            }
-
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 2
-                                Label {
-                                    text: qsTr("QQ群")
-                                    color: "#e6efff"
-                                    font.pixelSize: 14
-                                    Layout.fillWidth: true
-                                    horizontalAlignment: Text.AlignLeft
-                                }
-                                Label {
-                                    text: "616325806"
-                                    color: "#7f8cab"
-                                    font.pixelSize: 12
-                                    elide: Text.ElideRight
-                                    Layout.fillWidth: true
-                                    horizontalAlignment: Text.AlignLeft
-                                }
-                            }
-
-                            Label {
-                                text: "\u2197"
-                                color: "#23c9a9"
-                                font.pixelSize: 16
-                                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: Qt.openUrlExternally("https://qm.qq.com/q/616325806")
-                        }
-                    }
                     ColumnLayout {
-                        spacing: 8
-                        Repeater {
-                            model: [
-                                { title: qsTr("GitHub 原项目"), url: "https://github.com/Ayndpa/ConnectTool" },
-                                { title: qsTr("GitHub 本项目"), url: "https://github.com/moeleak/connecttool-qt" }
-                            ]
-                            delegate: Rectangle {
-                                required property string title
-                                required property string url
-                                Layout.fillWidth: true
-                                height: 48
-                                radius: 10
-                                color: "#162033"
-                                border.color: "#1f2b3c"
+                        anchors.fill: parent
+                        anchors.margins: 12
+                        spacing: 12
+                        Label {
+                            text: qsTr("关于")
+                            font.pixelSize: 20
+                            color: "#e6efff"
+                        }
+                        Label {
+                            text: qsTr("ConnectTool 使用 Steam P2P 协助房主与好友建立转发。")
+                            color: "#dce7ff"
+                            font.pixelSize: 14
+                            wrapMode: Text.WordWrap
+                        }
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 48
+                            radius: 10
+                            color: "#162033"
+                            border.color: "#1f2b3c"
 
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: 10
-                                    spacing: 10
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 10
+                                spacing: 10
 
-                                    Rectangle {
-                                        width: 28
-                                        height: 28
-                                        radius: 14
-                                        color: "#0e121a"
-                                        border.color: "#23c9a9"
-                                        Image {
-                                            anchors.centerIn: parent
-                                            width: 18
-                                            height: 18
-                                            source: Qt.resolvedUrl("GitHub.svg")
-                                            sourceSize.width: 18
-                                            sourceSize.height: 18
-                                            asynchronous: false
-                                            fillMode: Image.PreserveAspectFit
-                                            smooth: true
-                                            mipmap: true
-                                            layer.enabled: true
-                                            layer.effect: ColorOverlay { color: "#23c9a9" }
-                                        }
-                                    }
-
-                                    ColumnLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 2
-                                        Label {
-                                            text: title
-                                            color: "#e6efff"
-                                            font.pixelSize: 14
-                                            Layout.fillWidth: true
-                                            horizontalAlignment: Text.AlignLeft
-                                        }
-                                        Label {
-                                            text: url
-                                            color: "#7f8cab"
-                                            font.pixelSize: 12
-                                            elide: Text.ElideRight
-                                            Layout.fillWidth: true
-                                            horizontalAlignment: Text.AlignLeft
-                                        }
-                                    }
-
-                                    Label {
-                                        text: "\u2197"
-                                        color: "#23c9a9"
-                                        font.pixelSize: 16
-                                        Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                                Rectangle {
+                                    width: 28
+                                    height: 28
+                                    radius: 14
+                                    color: "#0e121a"
+                                    border.color: "#23c9a9"
+                                    Image {
+                                        anchors.centerIn: parent
+                                        width: 18
+                                        height: 18
+                                        source: Qt.resolvedUrl("QQ.svg")
+                                        sourceSize.width: 18
+                                        sourceSize.height: 18
+                                        asynchronous: false
+                                        fillMode: Image.PreserveAspectFit
+                                        smooth: true
+                                        mipmap: true
+                                        layer.enabled: true
+                                        layer.effect: ColorOverlay { color: "#23c9a9" }
                                     }
                                 }
 
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: Qt.openUrlExternally(url)
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 2
+                                    Label {
+                                        text: qsTr("ConnectTool 总群")
+                                        color: "#e6efff"
+                                        font.pixelSize: 14
+                                        Layout.fillWidth: true
+                                        horizontalAlignment: Text.AlignLeft
+                                    }
+                                    Label {
+                                        text: "616325806"
+                                        color: "#7f8cab"
+                                        font.pixelSize: 12
+                                        elide: Text.ElideRight
+                                        Layout.fillWidth: true
+                                        horizontalAlignment: Text.AlignLeft
+                                    }
+                                }
+
+                                Label {
+                                    text: "\u2197"
+                                    color: "#23c9a9"
+                                    font.pixelSize: 16
+                                    Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: Qt.openUrlExternally("https://qm.qq.com/q/616325806")
+                            }
+                        }
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 48
+                            radius: 10
+                            color: "#162033"
+                            border.color: "#1f2b3c"
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 10
+                                spacing: 10
+
+                                Rectangle {
+                                    width: 28
+                                    height: 28
+                                    radius: 14
+                                    color: "#0e121a"
+                                    border.color: "#23c9a9"
+                                    Image {
+                                        anchors.centerIn: parent
+                                        width: 18
+                                        height: 18
+                                        source: Qt.resolvedUrl("QQ.svg")
+                                        sourceSize.width: 18
+                                        sourceSize.height: 18
+                                        asynchronous: false
+                                        fillMode: Image.PreserveAspectFit
+                                        smooth: true
+                                        mipmap: true
+                                        layer.enabled: true
+                                        layer.effect: ColorOverlay { color: "#23c9a9" }
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 2
+                                    Label {
+                                        text: qsTr("connecttool-qt 交流群")
+                                        color: "#e6efff"
+                                        font.pixelSize: 14
+                                        Layout.fillWidth: true
+                                        horizontalAlignment: Text.AlignLeft
+                                    }
+                                    Label {
+                                        text: "902943118"
+                                        color: "#7f8cab"
+                                        font.pixelSize: 12
+                                        elide: Text.ElideRight
+                                        Layout.fillWidth: true
+                                        horizontalAlignment: Text.AlignLeft
+                                    }
+                                }
+
+                                Label {
+                                    text: "\u2197"
+                                    color: "#23c9a9"
+                                    font.pixelSize: 16
+                                    Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: Qt.openUrlExternally("https://qm.qq.com/q/902943118")
+                            }
+                        }
+                        ColumnLayout {
+                            spacing: 8
+                            Repeater {
+                                model: [
+                                    { title: qsTr("GitHub 原项目"), url: "https://github.com/Ayndpa/ConnectTool" },
+                                    { title: qsTr("GitHub 本项目"), url: "https://github.com/moeleak/connecttool-qt" }
+                                ]
+                                delegate: Rectangle {
+                                    required property string title
+                                    required property string url
+                                    Layout.fillWidth: true
+                                    height: 48
+                                    radius: 10
+                                    color: "#162033"
+                                    border.color: "#1f2b3c"
+
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 10
+                                        spacing: 10
+
+                                        Rectangle {
+                                            width: 28
+                                            height: 28
+                                            radius: 14
+                                            color: "#0e121a"
+                                            border.color: "#23c9a9"
+                                            Image {
+                                                anchors.centerIn: parent
+                                                width: 18
+                                                height: 18
+                                                source: Qt.resolvedUrl("GitHub.svg")
+                                                sourceSize.width: 18
+                                                sourceSize.height: 18
+                                                asynchronous: false
+                                                fillMode: Image.PreserveAspectFit
+                                                smooth: true
+                                                mipmap: true
+                                                layer.enabled: true
+                                                layer.effect: ColorOverlay { color: "#23c9a9" }
+                                            }
+                                        }
+
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 2
+                                            Label {
+                                                text: title
+                                                color: "#e6efff"
+                                                font.pixelSize: 14
+                                                Layout.fillWidth: true
+                                                horizontalAlignment: Text.AlignLeft
+                                            }
+                                            Label {
+                                                text: url
+                                                color: "#7f8cab"
+                                                font.pixelSize: 12
+                                                elide: Text.ElideRight
+                                                Layout.fillWidth: true
+                                                horizontalAlignment: Text.AlignLeft
+                                            }
+                                        }
+
+                                        Label {
+                                            text: "\u2197"
+                                            color: "#23c9a9"
+                                            font.pixelSize: 16
+                                            Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: Qt.openUrlExternally(url)
+                                    }
                                 }
                             }
                         }
+                        Rectangle { Layout.fillHeight: true; color: "transparent" }
                     }
-                    Label {
-                        text: qsTr("作者: moeleak")
-                        color: "#7f8cab"
-                        font.pixelSize: 13
+                }
+
+                Frame {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.preferredWidth: parent.width * 0.45
+                    Layout.alignment: Qt.AlignTop
+                    padding: 16
+                    Material.elevation: 6
+                    background: Rectangle { radius: 12; color: "#111827"; border.color: "#1f2b3c" }
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 16
+                        spacing: 12
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignTop
+                        Label {
+                            text: qsTr("贡献者")
+                            color: "#e6efff"
+                            font.pixelSize: 18
+                            font.bold: true
+                        }
+                        ColumnLayout {
+                            spacing: 4
+                            Layout.fillWidth: true
+                            Label { text: qsTr("开发"); color: "#9ab6e3"; font.pixelSize: 13 }
+                            Label { text: qsTr("Ayndpa, MoeLeak"); color: "#dce7ff"; font.pixelSize: 13; wrapMode: Text.WordWrap }
+                        }
+                        ColumnLayout {
+                            spacing: 4
+                            Layout.fillWidth: true
+                            Label { text: qsTr("测试"); color: "#9ab6e3"; font.pixelSize: 13 }
+                            Label { text: qsTr("旺仔大乔, 梦于枫岚, 虈請, MoeLeak"); color: "#dce7ff"; font.pixelSize: 13; wrapMode: Text.WordWrap }
+                        }
+                        Rectangle { Layout.fillWidth: true; Layout.fillHeight: true; color: "transparent" }
                     }
-                    Rectangle { Layout.fillHeight: true; color: "transparent" }
                 }
             }
         }
