@@ -498,12 +498,13 @@ void Backend::stopVpn() {
   vpnStartAttempted_ = false;
   tunLocalIp_.clear();
   tunDeviceName_.clear();
-  if (vpnBridge_) {
-    vpnBridge_->stop();
-  }
   if (vpnManager_) {
+    vpnManager_->setVpnBridge(nullptr);
     vpnManager_->clearPeers();
     vpnManager_->stopMessageHandler();
+  }
+  if (vpnBridge_) {
+    vpnBridge_->stop();
   }
   vpnBridge_.reset();
   vpnManager_.reset();
