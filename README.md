@@ -6,11 +6,11 @@
 
 - 跨平台支持良好，支持 Windows/Linux/MacOS
 - 去中心化（使用Steam Lobby）即可实现公布房间到大厅
+- 支持单一的 TCP 转发模式和跨平台 TUN 虚拟网卡模式
 
 ## 待开发特性
 
 - 房间内文字/语音聊天室
-- TUN模式
 - 开发 Android 平台
 
 ![](./screenshot/screenshot-1.png) ![](./screenshot/screenshot-2.png)
