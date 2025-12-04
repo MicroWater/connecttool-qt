@@ -304,6 +304,7 @@ public:
     std::cout << "Set IP address: " << ip << "/" << prefixLength << std::endl;
     lastConfiguredIp_ = ip;
     ConvertInterfaceLuidToIndex(&adapterLuid_, &adapterIndex_);
+    ensureFirewallRule();
     return true;
   }
 
@@ -314,6 +315,10 @@ public:
       setError("Adapter IP/index not set for routing");
       return false;
     }
+    std::ostringstream del;
+    del << "route DELETE " << network << " MASK " << netmask
+        << " IF " << adapterIndex_ << " >nul 2>&1";
+    ::system(del.str().c_str());
     std::ostringstream cmd;
     cmd << "route ADD " << network << " MASK " << netmask << " "
         << lastConfiguredIp_ << " IF " << adapterIndex_ << " METRIC 1";
@@ -376,6 +381,43 @@ public:
   }
 
 private:
+  static std::string escape_ps(const std::string &value) {
+    std::string escaped;
+    escaped.reserve(value.size());
+    for (char c : value) {
+      if (c == '\'') {
+        escaped += "''";
+      } else {
+        escaped.push_back(c);
+      }
+    }
+    return escaped;
+  }
+
+  void ensureFirewallRule() const {
+    if (deviceName_.empty()) {
+      return;
+    }
+    const std::string ruleName = "ConnectTool TUN inbound";
+    const std::string escapedName = escape_ps(ruleName);
+    const std::string escapedAlias = escape_ps(deviceName_);
+    std::ostringstream ps;
+    ps << "powershell -Command \"$ErrorActionPreference='SilentlyContinue'; "
+       << "Remove-NetFirewallRule -DisplayName '" << escapedName
+       << "' -ErrorAction SilentlyContinue; "
+       << "New-NetFirewallRule -DisplayName '" << escapedName
+       << "' -Direction Inbound -Action Allow -Protocol Any "
+       << "-InterfaceAlias '" << escapedAlias << "' -Enabled True\"";
+    const int rc = ::system(ps.str().c_str());
+    if (rc != 0) {
+      std::cerr << "Failed to add firewall rule for " << deviceName_
+                << " (rc=" << rc << ")" << std::endl;
+    } else {
+      std::cout << "Added firewall rule for interface " << deviceName_
+                << std::endl;
+    }
+  }
+
   static int NetmaskToPrefixLength(const std::string &netmask) {
     in_addr addr{};
     if (inet_pton(AF_INET, netmask.c_str(), &addr) != 1) {

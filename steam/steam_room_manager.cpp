@@ -160,9 +160,9 @@ void SteamMatchmakingCallbacks::OnLobbyListReceived(LobbyMatchList_t *pCallback,
   }
 
   // Ensure current lobby is present even if not returned by filter (e.g. host
-  //未设置标签或区域过滤不同)
+  //未设置标签或区域过滤不同). Skip when lobby is intentionally unlisted.
   CSteamID current = roomManager_->getCurrentLobby();
-  if (current.IsValid()) {
+  if (current.IsValid() && roomManager_->publishLobby_) {
     const uint64 currentVal = current.ConvertToUint64();
     const bool exists = std::any_of(
         infos.begin(), infos.end(),

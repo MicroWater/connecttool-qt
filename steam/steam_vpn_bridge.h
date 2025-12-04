@@ -36,6 +36,7 @@ public:
   void onUserLeft(CSteamID steamID);
   // Force-send our current address/route to all peers (used after reconnect).
   void rebroadcastState();
+  static std::string ipToString(uint32_t ip);
 
   struct Statistics {
     uint64_t packetsSent = 0;
@@ -49,7 +50,6 @@ public:
 private:
   void tunReadThread();
 
-  static std::string ipToString(uint32_t ip);
   static uint32_t stringToIp(const std::string &ipStr);
   static uint32_t extractDestIP(const uint8_t *packet, size_t length);
   static uint32_t extractSourceIP(const uint8_t *packet, size_t length);

@@ -63,17 +63,17 @@ PersonaDisplay personaStateDisplay(EPersonaState state) {
 }
 
 QString defaultRoomName() {
-  QString persona;
+  QString ownerName;
   if (SteamFriends()) {
-    const char *name = SteamFriends()->GetPersonaName();
-    if (name && name[0] != '\0') {
-      persona = QString::fromUtf8(name);
+    const char *persona = SteamFriends()->GetPersonaName();
+    if (persona && persona[0] != '\0') {
+      ownerName = QString::fromUtf8(persona);
     }
   }
-  if (!persona.isEmpty()) {
-    return QCoreApplication::translate("Backend", "%1 的房间").arg(persona);
+  if (ownerName.isEmpty()) {
+    ownerName = QCoreApplication::translate("Backend", "ConnectTool");
   }
-  return QCoreApplication::translate("Backend", "ConnectTool 房间");
+  return QCoreApplication::translate("Backend", "%1 的房间").arg(ownerName);
 }
 
 void steamWarningHook(int /*severity*/, const char *msg) {
@@ -336,8 +336,9 @@ QString Backend::lobbyName() const {
     CSteamID owner = SteamMatchmaking()->GetLobbyOwner(lobby);
     if (owner.IsValid() && SteamFriends()) {
       const char *ownerName = SteamFriends()->GetFriendPersonaName(owner);
-      if (ownerName) {
-        return QString::fromUtf8(ownerName);
+      if (ownerName && ownerName[0] != '\0') {
+        return QCoreApplication::translate("Backend", "%1 的房间")
+            .arg(QString::fromUtf8(ownerName));
       }
     }
   }
@@ -909,6 +910,9 @@ void Backend::handleLobbyModeChanged(bool wantsTun, const CSteamID &lobby) {
   }
   // Host advertises TCP, but UI was in TUN: fall back to TCP.
   if (!wantsTun && connectionMode_ == ConnectionMode::Tun) {
+    if (isHost()) {
+      return;
+    }
     vpnWanted_ = false;
     stopVpn();
     connectionMode_ = ConnectionMode::Tcp;
@@ -1246,7 +1250,19 @@ void Backend::updateLobbiesList(
     entry.lobbyId = QString::number(lobby.id.ConvertToUint64());
     entry.name = QString::fromStdString(lobby.name);
     if (entry.name.trimmed().isEmpty()) {
-      entry.name = tr("未命名房间");
+      QString hostDisplay = QString::fromStdString(lobby.ownerName);
+      if (hostDisplay.isEmpty() && lobby.ownerId.IsValid() && SteamFriends()) {
+        const char *ownerName =
+            SteamFriends()->GetFriendPersonaName(lobby.ownerId);
+        if (ownerName && ownerName[0] != '\0') {
+          hostDisplay = QString::fromUtf8(ownerName);
+        }
+      }
+      if (!hostDisplay.isEmpty()) {
+        entry.name = tr("%1 的房间").arg(hostDisplay);
+      } else {
+        entry.name = tr("未命名房间");
+      }
     }
     if (lobby.ownerId.IsValid()) {
       entry.hostId = QString::number(lobby.ownerId.ConvertToUint64());
@@ -1294,6 +1310,15 @@ void Backend::updateMembersList() {
       }
     }
 
+    std::unordered_map<uint64_t, uint32_t> ipBySteam;
+    if (vpnBridge_) {
+      const auto routes = vpnBridge_->getRoutingTable();
+      for (const auto &kv : routes) {
+        const uint64_t sid = kv.second.steamID.ConvertToUint64();
+        ipBySteam[sid] = kv.second.ipAddress;
+      }
+    }
+
     std::vector<MembersModel::Entry> entries;
     entries.reserve(lobbyMembers.size());
     CSteamID myId = SteamUser()->GetSteamID();
@@ -1338,6 +1363,10 @@ void Backend::updateMembersList() {
         entry.ping = vpnManager_->getPeerPing(memberId);
         entry.relay = QString::fromStdString(
             vpnManager_->getPeerConnectionType(memberId));
+      }
+      auto itIp = ipBySteam.find(memberValue);
+      if (itIp != ipBySteam.end()) {
+        entry.ip = QString::fromStdString(SteamVpnBridge::ipToString(itIp->second));
       }
       entries.push_back(std::move(entry));
     }
