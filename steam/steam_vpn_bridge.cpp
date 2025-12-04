@@ -148,6 +148,7 @@ void SteamVpnBridge::tunReadThread() {
                                      : -1;
     if (bytesRead > 0 && steamManager_) {
       const uint32_t destIP = extractDestIP(buffer, bytesRead);
+      const uint32_t srcIP = extractSourceIP(buffer, bytesRead);
       uint8_t vpnPacket[2048 + sizeof(VpnMessageHeader) +
                         sizeof(VpnPacketWrapper)];
       auto *header = reinterpret_cast<VpnMessageHeader *>(vpnPacket);
@@ -156,6 +157,7 @@ void SteamVpnBridge::tunReadThread() {
       auto *wrapper = reinterpret_cast<VpnPacketWrapper *>(
           vpnPacket + sizeof(VpnMessageHeader));
       wrapper->senderNodeId = ipNegotiator_.getLocalNodeID();
+      wrapper->sourceIP = htonl(srcIP);
 
       const size_t totalPayloadSize =
           sizeof(VpnPacketWrapper) + static_cast<size_t>(bytesRead);
@@ -228,14 +230,16 @@ void SteamVpnBridge::handleVpnMessage(const uint8_t *data, size_t length,
 
   if (header.type == VpnMessageType::IP_PACKET) {
     if (tunDevice_ && payloadLength > sizeof(VpnPacketWrapper)) {
+      VpnPacketWrapper wrapper{};
+      std::memcpy(&wrapper, payload, sizeof(VpnPacketWrapper));
       const uint8_t *ipPacket = payload + sizeof(VpnPacketWrapper);
       const size_t ipPacketLen = payloadLength - sizeof(VpnPacketWrapper);
       const uint32_t destIP = extractDestIP(ipPacket, ipPacketLen);
+      const uint32_t senderIP = ntohl(wrapper.sourceIP);
 
       CSteamID conflicting;
-      VpnPacketWrapper wrapper;
-      std::memcpy(&wrapper, payload, sizeof(VpnPacketWrapper));
-      if (heartbeatManager_.detectConflict(destIP, wrapper.senderNodeId,
+      const uint32_t conflictIP = senderIP != 0 ? senderIP : destIP;
+      if (heartbeatManager_.detectConflict(conflictIP, wrapper.senderNodeId,
                                            conflicting) &&
           conflicting != senderSteamID) {
         sendVpnMessage(VpnMessageType::FORCED_RELEASE, payload, payloadLength,

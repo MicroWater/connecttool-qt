@@ -888,6 +888,17 @@ void Backend::handleLobbyModeChanged(bool wantsTun, const CSteamID &lobby) {
   connectionMode_ = ConnectionMode::Tun;
   ensureVpnSetup();
   roomManager_->setVpnMode(true, vpnManager_.get());
+  // Start TUN bridge immediately so the device appears for guests.
+  if (vpnBridge_ && !vpnBridge_->isRunning()) {
+    if (!vpnBridge_->start()) {
+      qWarning() << tr("无法启动 TUN 设备，请检查权限或驱动。");
+      return;
+    }
+    updateVpnInfo();
+    vpnConnected_ = true;
+    vpnHosting_ = false;
+  }
+  syncVpnPeers();
   updateStatus();
   emit stateChanged();
 }

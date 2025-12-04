@@ -40,6 +40,7 @@ struct VpnMessageHeader {
 
 struct VpnPacketWrapper {
   NodeID senderNodeId;
+  uint32_t sourceIP; // network byte order
 };
 
 struct ProbeRequestPayload {
