@@ -35,6 +35,7 @@ public:
   void setSendCallback(VpnSendMessageCallback sendCb,
                        VpnBroadcastMessageCallback broadcastCb);
   void setSuccessCallback(NegotiationSuccessCallback callback);
+  void reset();
   void startNegotiation();
   void checkTimeout();
   void handleProbeRequest(const ProbeRequestPayload &request,

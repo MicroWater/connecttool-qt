@@ -34,6 +34,8 @@ bool SteamVpnBridge::start(const std::string &tunDeviceName,
     std::cerr << "VPN bridge already running" << std::endl;
     return false;
   }
+  ipNegotiator_.reset();
+  heartbeatManager_.reset();
   if (!steamManager_) {
     std::cerr << "Steam manager missing, cannot start VPN bridge"
               << std::endl;
@@ -115,6 +117,8 @@ void SteamVpnBridge::stop() {
     std::lock_guard<std::mutex> lock(routingMutex_);
     routingTable_.clear();
   }
+  ipNegotiator_.reset();
+  heartbeatManager_.reset();
   localIP_ = 0;
   std::cout << "Steam VPN bridge stopped" << std::endl;
 }

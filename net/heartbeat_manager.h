@@ -26,6 +26,7 @@ public:
   void setNodeExpiredCallback(NodeExpiredCallback callback);
   void start();
   void stop();
+  void reset();
   void updateLocalIP(uint32_t ip);
 
   void handleHeartbeat(const HeartbeatPayload &heartbeat,

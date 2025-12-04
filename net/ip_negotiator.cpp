@@ -24,6 +24,21 @@ void IpNegotiator::initialize(CSteamID localSteamID, uint32_t baseIP,
             << std::endl;
 }
 
+void IpNegotiator::reset() {
+  {
+    std::lock_guard<std::mutex> lock(usedIPsMutex_);
+    usedIPs_.clear();
+  }
+  {
+    std::lock_guard<std::mutex> lock(conflictsMutex_);
+    collectedConflicts_.clear();
+  }
+  state_ = NegotiationState::IDLE;
+  candidateIP_ = 0;
+  probeOffset_ = 0;
+  localIP_ = 0;
+}
+
 void IpNegotiator::setSendCallback(VpnSendMessageCallback sendCb,
                                    VpnBroadcastMessageCallback broadcastCb) {
   sendCallback_ = std::move(sendCb);

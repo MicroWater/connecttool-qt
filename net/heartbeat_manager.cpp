@@ -50,6 +50,18 @@ void HeartbeatManager::stop() {
   std::cout << "Heartbeat manager stopped" << std::endl;
 }
 
+void HeartbeatManager::reset() {
+  stop();
+  {
+    std::lock_guard<std::mutex> lock(nodeTableMutex_);
+    nodeTable_.clear();
+    ipToNodeId_.clear();
+  }
+  localIP_ = 0;
+  localNodeId_.fill(0);
+  lastHeartbeatSent_ = std::chrono::steady_clock::now();
+}
+
 void HeartbeatManager::updateLocalIP(uint32_t ip) { localIP_ = ip; }
 
 void HeartbeatManager::heartbeatLoop() {
