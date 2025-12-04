@@ -907,10 +907,20 @@ void Backend::handleLobbyModeChanged(bool wantsTun, const CSteamID &lobby) {
   if (!roomManager_ || lobby != roomManager_->getCurrentLobby()) {
     return;
   }
-  if (!wantsTun || connectionMode_ == ConnectionMode::Tun) {
+  // Host advertises TCP, but UI was in TUN: fall back to TCP.
+  if (!wantsTun && connectionMode_ == ConnectionMode::Tun) {
+    vpnWanted_ = false;
+    stopVpn();
+    connectionMode_ = ConnectionMode::Tcp;
+    roomManager_->setVpnMode(false, nullptr);
+    updateStatus();
+    emit stateChanged();
     return;
   }
-  // If host is advertising TUN, auto-switch guests into TUN mode.
+  // Host advertises TUN, auto-switch guests into TUN mode.
+  if (connectionMode_ == ConnectionMode::Tun) {
+    return;
+  }
   if (isHost()) {
     return;
   }
