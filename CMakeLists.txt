@@ -1,13 +1,19 @@
 cmake_minimum_required(VERSION 3.20)
-if(POLICY CMP0167)
-    cmake_policy(SET CMP0167 NEW)
-endif()
 project(ConnectToolQt LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2)
-find_package(Boost 1.70 CONFIG REQUIRED COMPONENTS headers)
+set(BOOST_MIN_VERSION 1.70)
+if(POLICY CMP0167)
+    # Prefer FindBoost when config packages are unavailable (older toolchains)
+    cmake_policy(SET CMP0167 OLD)
+endif()
+find_package(Boost ${BOOST_MIN_VERSION} CONFIG QUIET)
+if(NOT Boost_FOUND)
+    message(STATUS "Boost config package not found, falling back to CMake FindBoost.")
+    find_package(Boost ${BOOST_MIN_VERSION} REQUIRED)
+endif()
 find_package(Threads REQUIRED)
 
 qt_standard_project_setup()
@@ -99,6 +105,24 @@ target_include_directories(connecttool-qt PRIVATE
     net
     steam
     ${STEAMWORKS_INCLUDE_DIR})
+
+# Ensure we always get a headers-only target, regardless of which Boost package layout is found.
+if(NOT TARGET Boost::headers)
+    if(TARGET Boost::boost)
+        add_library(Boost::headers INTERFACE IMPORTED)
+        target_link_libraries(Boost::headers INTERFACE Boost::boost)
+    elseif(Boost_INCLUDE_DIRS OR Boost_INCLUDE_DIR)
+        set(_boost_includes ${Boost_INCLUDE_DIRS})
+        if(NOT _boost_includes)
+            set(_boost_includes ${Boost_INCLUDE_DIR})
+        endif()
+        add_library(Boost_headers INTERFACE)
+        target_include_directories(Boost_headers INTERFACE ${_boost_includes})
+        add_library(Boost::headers ALIAS Boost_headers)
+    else()
+        message(FATAL_ERROR "Boost headers not found. Set Boost_ROOT or Boost_INCLUDE_DIR to a valid installation.")
+    endif()
+endif()
 
 target_link_libraries(connecttool-qt PRIVATE
     Qt6::Core
