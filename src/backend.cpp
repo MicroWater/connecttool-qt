@@ -931,6 +931,9 @@ void Backend::handleLobbyModeChanged(bool wantsTun, const CSteamID &lobby) {
     emit stateChanged();
     return;
   }
+  if (!wantsTun) {
+    return;
+  }
   // Host advertises TUN, auto-switch guests into TUN mode.
   if (connectionMode_ == ConnectionMode::Tun) {
     return;
