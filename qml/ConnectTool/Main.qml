@@ -46,6 +46,13 @@ ApplicationWindow {
 
     Connections {
         target: backend
+        function onAdminPrivilegesRequired() {
+            adminDialog.open()
+        }
+        function onTunStartDenied() {
+            startSwitch.checked = false
+            startSwitch.checked = Qt.binding(() => backend.isHost || backend.isConnected)
+        }
     }
 
     Timer {
@@ -53,6 +60,29 @@ ApplicationWindow {
         interval: 1600
         repeat: false
         onTriggered: win.copyHint = ""
+    }
+
+    Dialog {
+        id: adminDialog
+        title: qsTr("需要管理员权限")
+        modal: true
+        standardButtons: Dialog.Ok
+        x: (win.width - width) / 2
+        y: (win.height - height) / 2
+        contentItem: Column {
+            spacing: 12
+            Label {
+                text: qsTr("请使用管理员身份重新打开程序后再尝试启用TUN模式")
+                wrapMode: Text.WordWrap
+                width: 300
+            }
+            // TextArea {
+            //     width: 300
+            //     readOnly: true
+            //     text: qsTr("Current input: %1").arg(backend.inputText)
+            // }
+        }
+
     }
 
     Drawer {
@@ -279,6 +309,7 @@ ApplicationWindow {
                             }
 
                             Switch {
+                                id: startSwitch
                                 text: qsTr("启动")
                                 checked: backend.isHost || backend.isConnected
                                 Layout.alignment: Qt.AlignVCenter

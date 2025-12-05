@@ -3,36 +3,44 @@
 #include "../net/tcp_server.h"
 #include "../steam/steam_networking_manager.h"
 #include "../steam/steam_room_manager.h"
+#include "../steam/steam_utils.h"
 #include "../steam/steam_vpn_bridge.h"
 #include "../steam/steam_vpn_networking_manager.h"
-#include "../steam/steam_utils.h"
 
 #include <QClipboard>
-#include <QDesktopServices>
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QDesktopServices>
 #include <QGuiApplication>
 #include <QMetaObject>
 #include <QQmlEngine>
-#include <QVariantMap>
 #include <QUrl>
+#include <QVariantMap>
 #include <QtDebug>
 #include <algorithm>
 #include <chrono>
 #include <isteamnetworkingutils.h>
+#ifdef Q_OS_WIN
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
+#if defined(Q_OS_UNIX)
+#include <unistd.h>
+#endif
 #ifdef Q_OS_LINUX
 #include <pwd.h>
 #include <sys/types.h>
-#include <unistd.h>
 #endif
 #include <mutex>
+#include <set>
 #include <sstream>
 #include <steam_api.h>
 #include <steamnetworkingtypes.h>
 #include <unordered_set>
-#include <set>
-#include <vector>
 #include <utility>
+#include <vector>
 
 namespace {
 struct PersonaDisplay {
@@ -40,6 +48,25 @@ struct PersonaDisplay {
   bool online;
   int priority;
 };
+
+bool currentUserIsAdmin() {
+#ifdef Q_OS_WIN
+  HANDLE token = nullptr;
+  if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token)) {
+    return false;
+  }
+  TOKEN_ELEVATION elevation{};
+  DWORD returnLength = 0;
+  const BOOL ok = GetTokenInformation(token, TokenElevation, &elevation,
+                                      sizeof(elevation), &returnLength);
+  CloseHandle(token);
+  return ok && elevation.TokenIsElevated;
+#elif defined(Q_OS_UNIX)
+  return geteuid() == 0;
+#else
+  return true;
+#endif
+}
 
 PersonaDisplay personaStateDisplay(EPersonaState state) {
   switch (state) {
@@ -103,15 +130,15 @@ void fixSteamEnvForSudo() {
   QByteArray targetHome = sudoHomeEnv;
   uid_t targetUid = 0;
   if (targetHome.isEmpty() && !sudoUser.isEmpty()) {
-    struct passwd pwd {};
+    struct passwd pwd{};
     struct passwd *result = nullptr;
     long bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
     if (bufsize < 0) {
       bufsize = 16384;
     }
     std::vector<char> buffer(static_cast<size_t>(bufsize));
-    if (getpwnam_r(sudoUser.constData(), &pwd, buffer.data(),
-                   buffer.size(), &result) == 0 &&
+    if (getpwnam_r(sudoUser.constData(), &pwd, buffer.data(), buffer.size(),
+                   &result) == 0 &&
         result != nullptr && result->pw_dir != nullptr) {
       targetHome = QByteArray(result->pw_dir);
       targetUid = result->pw_uid;
@@ -179,28 +206,26 @@ Backend::Backend(QObject *parent)
   roomManager_->setAdvertisedMode(inTunMode());
   roomManager_->setLobbyName(roomName_.toStdString());
   roomManager_->setPublishLobby(publishLobby_);
-  roomManager_->setLobbyModeChangedCallback(
-      [this](bool wantsTun, const CSteamID &lobby) {
-        QMetaObject::invokeMethod(
-            this,
-            [this, wantsTun, lobby]() {
-              handleLobbyModeChanged(wantsTun, lobby);
-            },
-            Qt::QueuedConnection);
-      });
+  roomManager_->setLobbyModeChangedCallback([this](bool wantsTun,
+                                                   const CSteamID &lobby) {
+    QMetaObject::invokeMethod(
+        this,
+        [this, wantsTun, lobby]() { handleLobbyModeChanged(wantsTun, lobby); },
+        Qt::QueuedConnection);
+  });
   roomManager_->setHostLeftCallback([this]() {
     QMetaObject::invokeMethod(
         this, [this]() { disconnect(); }, Qt::QueuedConnection);
   });
-  roomManager_->setChatMessageCallback(
-      [this](const CSteamID &sender, const std::string &payload) {
-        const uint64_t senderId = sender.ConvertToUint64();
-        const QString text =
-            QString::fromUtf8(payload.data(), static_cast<int>(payload.size()));
-        QMetaObject::invokeMethod(
-            this, [this, senderId, text]() { handleChatMessage(senderId, text); },
-            Qt::QueuedConnection);
-      });
+  roomManager_->setChatMessageCallback([this](const CSteamID &sender,
+                                              const std::string &payload) {
+    const uint64_t senderId = sender.ConvertToUint64();
+    const QString text =
+        QString::fromUtf8(payload.data(), static_cast<int>(payload.size()));
+    QMetaObject::invokeMethod(
+        this, [this, senderId, text]() { handleChatMessage(senderId, text); },
+        Qt::QueuedConnection);
+  });
   roomManager_->setLobbyListCallback(
       [this](const std::vector<SteamRoomManager::LobbyInfo> &lobbies) {
         QMetaObject::invokeMethod(
@@ -414,6 +439,21 @@ bool Backend::ensureSteamReady(const QString &actionLabel) {
   return false;
 }
 
+bool Backend::hasAdminPrivileges() const { return currentUserIsAdmin(); }
+
+bool Backend::ensureTunPrivileges() {
+  if (hasAdminPrivileges()) {
+    return true;
+  }
+  emit adminPrivilegesRequired();
+  emit tunStartDenied();
+  vpnWanted_ = false;
+  vpnHosting_ = false;
+  vpnStartAttempted_ = false;
+  emit stateChanged();
+  return false;
+}
+
 void Backend::startHosting() {
   if (!ensureSteamReady(tr("主持房间"))) {
     return;
@@ -432,6 +472,9 @@ void Backend::startHosting() {
   }
 
   if (inTunMode()) {
+    if (!ensureTunPrivileges()) {
+      return;
+    }
     ensureVpnSetup();
     if (!vpnManager_ || !vpnBridge_) {
       return;
@@ -614,6 +657,9 @@ void Backend::joinHost() {
   }
 
   if (inTunMode()) {
+    if (!ensureTunPrivileges()) {
+      return;
+    }
     ensureVpnSetup();
     if (!vpnManager_ || !vpnBridge_) {
       return;
@@ -704,6 +750,9 @@ void Backend::joinLobby(const QString &lobbyId) {
   applyLobbyModePreference(lobby);
 
   if (inTunMode()) {
+    if (!ensureTunPrivileges()) {
+      return;
+    }
     ensureVpnSetup();
     if (!vpnManager_ || !vpnBridge_) {
       return;
@@ -918,6 +967,9 @@ void Backend::handleLobbyModeChanged(bool wantsTun, const CSteamID &lobby) {
   // Always track host-advertised mode so metadata stays correct if we later
   // refresh it (e.g. host re-publishes).
   roomManager_->setAdvertisedMode(wantsTun);
+  if (wantsTun && !ensureTunPrivileges()) {
+    return;
+  }
   // Host advertises TCP, but UI was in TUN: fall back to TCP.
   if (!wantsTun && connectionMode_ == ConnectionMode::Tun) {
     if (isHost()) {
@@ -1071,8 +1123,7 @@ void Backend::addFriend(const QString &steamId) {
     return;
   }
 
-  const bool overlayEnabled =
-      SteamUtils() && SteamUtils()->IsOverlayEnabled();
+  const bool overlayEnabled = SteamUtils() && SteamUtils()->IsOverlayEnabled();
   bool overlayInvoked = false;
   if (overlayEnabled) {
     qDebug() << "[Friends] opening overlay friendadd"
@@ -1095,8 +1146,8 @@ void Backend::addFriend(const QString &steamId) {
   if (overlayInvoked) {
     qWarning() << tr("已尝试打开 Steam 添加好友窗口。");
   } else {
-    qWarning()
-        << tr("已在浏览器中打开对方 Steam 个人主页，请在网页中添加好友。");
+    qWarning() << tr(
+        "已在浏览器中打开对方 Steam 个人主页，请在网页中添加好友。");
     if (openedProfile) {
       setStatusOverride(tr("正在打开 Steam 个人主页…"), 2000);
     }
@@ -1410,10 +1461,10 @@ void Backend::updateMembersList() {
       seen.insert(memberValue);
 
       MembersModel::Entry entry;
-      entry.isFriend = (SteamFriends() &&
-                        SteamFriends()->HasFriend(memberId,
-                                                  k_EFriendFlagImmediate)) ||
-                       (SteamUser() && memberId == myId);
+      entry.isFriend =
+          (SteamFriends() &&
+           SteamFriends()->HasFriend(memberId, k_EFriendFlagImmediate)) ||
+          (SteamUser() && memberId == myId);
       entry.steamId = QString::number(memberValue);
       entry.displayName =
           QString::fromUtf8(SteamFriends()->GetFriendPersonaName(memberId));
@@ -1431,7 +1482,8 @@ void Backend::updateMembersList() {
       }
       auto itIp = ipBySteam.find(memberValue);
       if (itIp != ipBySteam.end()) {
-        entry.ip = QString::fromStdString(SteamVpnBridge::ipToString(itIp->second));
+        entry.ip =
+            QString::fromStdString(SteamVpnBridge::ipToString(itIp->second));
       }
       entries.push_back(std::move(entry));
     }
@@ -1485,9 +1537,10 @@ void Backend::updateMembersList() {
     seen.insert(memberValue);
 
     MembersModel::Entry entry;
-    entry.isFriend = (SteamFriends() &&
-                      SteamFriends()->HasFriend(memberId, k_EFriendFlagImmediate)) ||
-                     (SteamUser() && memberId == myId);
+    entry.isFriend =
+        (SteamFriends() &&
+         SteamFriends()->HasFriend(memberId, k_EFriendFlagImmediate)) ||
+        (SteamUser() && memberId == myId);
     entry.steamId = QString::number(memberValue);
     entry.displayName =
         QString::fromUtf8(SteamFriends()->GetFriendPersonaName(memberId));
@@ -1505,8 +1558,8 @@ void Backend::updateMembersList() {
         int rp = -1;
         std::string relayInfo;
         const bool hasBroadcast =
-            roomManager_ &&
-            roomManager_->getRemotePing(myId, rp, relayInfo) && rp >= 0;
+            roomManager_ && roomManager_->getRemotePing(myId, rp, relayInfo) &&
+            rp >= 0;
         if (hasBroadcast && rp > 1) {
           entry.ping = rp;
           if (!relayInfo.empty()) {

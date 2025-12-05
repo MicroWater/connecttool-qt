@@ -138,6 +138,8 @@ signals:
   void lobbyRefreshingChanged();
   void lobbyFilterChanged();
   void lobbySortModeChanged();
+  void adminPrivilegesRequired();
+  void tunStartDenied();
 
 private:
   void tick();
@@ -166,6 +168,8 @@ private:
   bool inTunMode() const { return connectionMode_ == ConnectionMode::Tun; }
   bool inTcpMode() const { return connectionMode_ == ConnectionMode::Tcp; }
   void ensureVpnRunning();
+  bool hasAdminPrivileges() const;
+  bool ensureTunPrivileges();
 
   std::unique_ptr<SteamNetworkingManager> steamManager_;
   std::unique_ptr<SteamVpnNetworkingManager> vpnManager_;
