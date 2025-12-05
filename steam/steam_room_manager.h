@@ -45,6 +45,8 @@ private:
   SteamNetworkingManager *manager_;
   SteamRoomManager *roomManager_;
 
+  STEAM_CALLBACK(SteamMatchmakingCallbacks, OnLobbyDataUpdate,
+                 LobbyDataUpdate_t);
   STEAM_CALLBACK(SteamMatchmakingCallbacks, OnLobbyEntered, LobbyEnter_t);
   STEAM_CALLBACK(SteamMatchmakingCallbacks, OnLobbyChatUpdate,
                  LobbyChatUpdate_t);

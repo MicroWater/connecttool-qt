@@ -218,6 +218,32 @@ void SteamMatchmakingCallbacks::OnLobbyListReceived(LobbyMatchList_t *pCallback,
             << std::endl;
 }
 
+void SteamMatchmakingCallbacks::OnLobbyDataUpdate(
+    LobbyDataUpdate_t *pCallback) {
+  if (!roomManager_ || !pCallback->m_bSuccess) {
+    return;
+  }
+
+  CSteamID lobby(pCallback->m_ulSteamIDLobby);
+  CSteamID member(pCallback->m_ulSteamIDMember);
+  if (!lobby.IsValid() || lobby != roomManager_->getCurrentLobby()) {
+    return;
+  }
+
+  // Only react when the lobby metadata itself changes (not per-member data).
+  if (lobby != member) {
+    return;
+  }
+
+  const bool wantsTun = roomManager_->lobbyWantsTun(lobby);
+  if (wantsTun != roomManager_->vpnMode_) {
+    roomManager_->vpnMode_ = wantsTun;
+    if (roomManager_->lobbyModeChangedCallback_) {
+      roomManager_->lobbyModeChangedCallback_(wantsTun, lobby);
+    }
+  }
+}
+
 void SteamMatchmakingCallbacks::OnLobbyEntered(LobbyEnter_t *pCallback) {
   if (pCallback->m_EChatRoomEnterResponse == k_EChatRoomEnterResponseSuccess) {
     roomManager_->setCurrentLobby(pCallback->m_ulSteamIDLobby);
