@@ -497,218 +497,6 @@ ApplicationWindow {
                         Layout.fillHeight: true
                         spacing: 16
 
-                    Frame {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        padding: 16
-                        Material.elevation: 6
-                        background: Rectangle { radius: 12; color: "#111827"; border.color: "#1f2b3c" }
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            spacing: 12
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: 10
-                                Label {
-                                    text: qsTr("房间成员")
-                                    font.pixelSize: 18
-                                    color: "#e6efff"
-                                }
-                                Rectangle { Layout.fillWidth: true; color: "transparent" }
-                            }
-
-                            Item {
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                Layout.preferredHeight: 320
-
-                                Flickable {
-                                    id: memberFlick
-                                    anchors.fill: parent
-                                    anchors.margins: 6
-                                    clip: true
-                                    interactive: contentHeight > height
-                                    contentHeight: membersColumn.implicitHeight
-                                    ScrollBar.vertical: ScrollBar {}
-
-                                    Column {
-                                        id: membersColumn
-                                        width: parent.width
-                                        spacing: 12
-                                        Repeater {
-                                            id: memberRepeater
-                                            model: backend.membersModel
-                                            delegate: Rectangle {
-                                                required property string displayName
-                                                required property string steamId
-                                                required property string avatar
-                                                required property string ip
-                                                required property var ping
-                                                required property string relay
-                                                required property bool isFriend
-
-                                                radius: 10
-                                                color: "#162033"
-                                                border.color: "#1f2f45"
-                                                width: parent ? parent.width : 0
-                                                // 高度由内部布局决定，并增加一些内边距
-                                                implicitHeight: rowLayout.implicitHeight + 24
-
-                                                RowLayout {
-                                                    id: rowLayout
-                                                    anchors.fill: parent
-                                                    anchors.margins: 12
-                                                    spacing: 12
-
-                                                    // --- 1. 头像区域 (保持不变) ---
-                                                    Item {
-                                                        width: 48
-                                                        height: 48
-                                                        Layout.alignment: Qt.AlignVCenter
-                                                        Layout.preferredWidth: 48
-                                                        Layout.preferredHeight: 48
-                                                        Rectangle {
-                                                            id: memberAvatarFrame
-                                                            anchors.fill: parent
-                                                            radius: width / 2
-                                                            color: avatar.length > 0 ? "transparent" : "#1a2436"
-                                                            border.color: avatar.length > 0 ? "transparent" : "#1f2f45"
-                                                            layer.enabled: avatar.length > 0
-                                                            layer.effect: OpacityMask {
-                                                                source: memberAvatarFrame
-                                                                maskSource: Rectangle {
-                                                                    width: memberAvatarFrame.width
-                                                                    height: memberAvatarFrame.height
-                                                                    radius: memberAvatarFrame.width / 2
-                                                                    color: "white"
-                                                                }
-                                                            }
-                                                            Image {
-                                                                anchors.fill: parent
-                                                                source: avatar
-                                                                visible: avatar.length > 0
-                                                                fillMode: Image.PreserveAspectCrop
-                                                                smooth: true
-                                                            }
-                                                            Label {
-                                                                anchors.centerIn: parent
-                                                                visible: avatar.length === 0
-                                                                text: displayName.length > 0 ? displayName[0] : "?"
-                                                                color: "#6f7e9c"
-                                                                font.pixelSize: 18
-                                                            }
-                                                        }
-                                                    }
-
-                                                    // --- 2. 用户信息列 (保持不变) ---
-                                                    ColumnLayout {
-                                                        spacing: 4
-                                                        Layout.fillWidth: false // 不要占满，只占需要宽度
-                                                        Layout.alignment: Qt.AlignVCenter // 垂直居中
-
-                                                        RowLayout {
-                                                            spacing: 8
-                                                            Label {
-                                                                text: displayName
-                                                                font.pixelSize: 16
-                                                                color: "#e1edff"
-                                                                elide: Text.ElideRight
-                                                            }
-                                                            Rectangle {
-                                                                radius: 8
-                                                                color: "#142033"
-                                                                border.color: isFriend ? "#23c9a9" : "#ef476f"
-                                                                implicitHeight: 22
-                                                                implicitWidth: relationLabel.implicitWidth + 14
-                                                                Layout.alignment: Qt.AlignVCenter
-                                                                Label {
-                                                                    id: relationLabel
-                                                                    anchors.centerIn: parent
-                                                                    text: isFriend ? qsTr("好友") : qsTr("陌生人")
-                                                                    color: isFriend ? "#23c9a9" : "#ef476f"
-                                                                    font.pixelSize: 11
-                                                                }
-                                                            }
-                                                        }
-                                                        Label {
-                                                            text: qsTr("SteamID: %1").arg(steamId)
-                                                            font.pixelSize: 12
-                                                            color: "#7f8cab"
-                                                            elide: Text.ElideRight
-                                                        }
-                                                        Label {
-                                                            visible: backend.connectionMode === 1
-                                                            text: qsTr("IP: %1").arg(ip && ip.length > 0 ? ip : qsTr("-"))
-                                                            font.pixelSize: 12
-                                                            color: "#7f8cab"
-                                                            elide: Text.ElideRight
-                                                        }
-                                                    }
-
-                                                    // --- 3. 关键占位符 (Spacer) ---
-                                                    // 这个 Item 会占据中间所有剩余空间，把后面的 Ping 和 按钮 推到最右边
-                                                    Item {
-                                                        Layout.fillWidth: true
-                                                    }
-
-                                                    Button {
-                                                        visible: !isFriend
-                                                        text: qsTr("添加好友")
-                                                        Layout.alignment: Qt.AlignVCenter
-                                                        onClicked: backend.addFriend(steamId)
-                                                    }
-
-                                                    Button {
-                                                        visible: backend.connectionMode === 1 && ip && ip.length > 0
-                                                        text: qsTr("复制 IP")
-                                                        flat: true
-                                                        Layout.alignment: Qt.AlignVCenter
-                                                        onClicked: backend.copyToClipboard(ip)
-                                                    }
-
-                                                    // --- 4. Ping 信息列 ---
-                                                    ColumnLayout {
-                                                        spacing: 2
-                                                        Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
-                                                        Label {
-                                                            text: (ping === undefined || ping === null) ? qsTr("-") : qsTr("%1 ms").arg(ping)
-                                                            color: "#7fded1"
-                                                            font.pixelSize: 14
-                                                            horizontalAlignment: Text.AlignRight
-                                                            Layout.alignment: Qt.AlignRight
-                                                        }
-                                                        Label {
-                                                            text: relay.length > 0 ? relay : "-"
-                                                            color: "#8ea4c8"
-                                                            font.pixelSize: 12
-                                                            horizontalAlignment: Text.AlignRight
-                                                            Layout.alignment: Qt.AlignRight
-                                                        }
-                                                    }
-
-                                                    // --- 5. 按钮区域 (移动到这里) ---
-                                                    // 直接放在 RowLayout 中，它们会自动排列在 Ping 信息右侧
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                Column {
-                                    visible: memberRepeater.count === 0
-                                    anchors.centerIn: parent
-                                    spacing: 6
-                                    Label { text: qsTr("暂无成员"); color: "#8090b3" }
-                                    Label { text: qsTr("创建房间或等待邀请即可出现。"); color: "#62708f"; font.pixelSize: 12 }
-                                }
-                            }
-                        }
-                    }
-
                         Frame {
                             id: chatFrame
                             Layout.fillWidth: true
@@ -907,7 +695,7 @@ ApplicationWindow {
                     }
 
                     Frame {
-                        Layout.preferredWidth: 380
+                        Layout.preferredWidth: 485
                         Layout.fillHeight: true
                         padding: 16
                         Material.elevation: 6
@@ -919,188 +707,421 @@ ApplicationWindow {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
 
-                            RowLayout {
+                            TabBar {
+                                id: sidebarTabBar
+                                background: Rectangle { color: "transparent" }
                                 Layout.fillWidth: true
-                                spacing: 10
-                                Label {
-                                    text: qsTr("邀请好友")
-                                    font.pixelSize: 18
-                                    color: "#e6efff"
-                                }
-                                Rectangle { Layout.fillWidth: true; color: "transparent" }
-                                Item {
-                                    implicitWidth: 28
-                                    implicitHeight: 28
-                                    Layout.alignment: Qt.AlignVCenter
-
-                                    BusyIndicator {
-                                        anchors.fill: parent
-                                        running: backend.friendsRefreshing
-                                        visible: running
+                                TabButton {
+                                    text: qsTr("房间成员")
+                                    width: implicitWidth
+                                    contentItem: Label {
+                                        text: parent.text
+                                        font.pixelSize: 15
+                                        color: parent.checked ? "#23c9a9" : "#7f8cab"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    background: Rectangle {
+                                        color: parent.checked ? "#162033" : "transparent"
+                                        radius: 6
                                     }
                                 }
-                                Label {
-                                    text: qsTr("好友数: %1").arg(backend.friendsModel ? backend.friendsModel.count : 0)
-                                    color: "#7f8cab"
-                                    Layout.alignment: Qt.AlignVCenter
-                                }
-                                Button { text: qsTr("刷新"); onClicked: backend.refreshFriends() }
-                            }
-
-                            TextField {
-                                id: filterField
-                                Layout.fillWidth: true
-                                placeholderText: qsTr("搜索好友…")
-                                text: win.friendFilter
-                                onTextChanged: {
-                                    win.friendFilter = text
-                                    backend.friendFilter = text
+                                TabButton {
+                                    text: qsTr("Steam 好友")
+                                    width: implicitWidth
+                                    contentItem: Label {
+                                        text: parent.text
+                                        font.pixelSize: 15
+                                        color: parent.checked ? "#23c9a9" : "#7f8cab"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    background: Rectangle {
+                                        color: parent.checked ? "#162033" : "transparent"
+                                        radius: 6
+                                    }
                                 }
                             }
 
-                            Item {
+                            StackLayout {
+                                id: sidebarStack
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
-                                Layout.preferredHeight: 320
+                                currentIndex: sidebarTabBar.currentIndex
 
-                                ListView {
-                                    id: friendList
-                                    anchors.fill: parent
-                                    anchors.margins: 8
-                                    clip: true
-                                    spacing: 10
-                                    model: backend.friendsModel
-                                    ScrollBar.vertical: ScrollBar {}
+                                Item {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
 
-                                    Component.onCompleted: {
-                                        console.log("[QML] friendList completed, model count", model ? model.count : "<null>")
-                                    }
-                                    onModelChanged: console.log("[QML] friendList model changed", model)
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        spacing: 12
 
-                                    onCountChanged: console.log("[QML] friendList count", count)
+                                        Item {
+                                            Layout.fillWidth: true
+                                            Layout.fillHeight: true
+                                            Layout.preferredHeight: 320
 
-                                    delegate: Rectangle {
-                                        required property string displayName
-                                        required property string steamId
-                                        required property string avatar
-                                        required property bool online
-                                        required property string status
-                                        required property int inviteCooldown
-                                        width: friendList.width
+                                            Flickable {
+                                                id: memberFlick
+                                                anchors.fill: parent
+                                                anchors.margins: 6
+                                                clip: true
+                                                interactive: contentHeight > height
+                                                contentHeight: membersColumn.implicitHeight
+                                                ScrollBar.vertical: ScrollBar {}
 
-                                        Component.onCompleted: {
-                                            console.log("[QML] delegate", displayName, steamId)
-                                        }
+                                                Column {
+                                                    id: membersColumn
+                                                    width: parent.width
+                                                    spacing: 12
+                                                    Repeater {
+                                                        id: memberRepeater
+                                                        model: backend.membersModel
+                                                        delegate: Rectangle {
+                                                            required property string displayName
+                                                            required property string steamId
+                                                            required property string avatar
+                                                            required property string ip
+                                                            required property var ping
+                                                            required property string relay
+                                                            required property bool isFriend
 
-                                        visible: true // ordering handled by proxy, we keep all items
-                                        radius: 10
-                                        color: "#162033"
-                                        border.color: "#1f2f45"
-                                        implicitHeight: 60
-                                        Layout.fillWidth: true
+                                                            radius: 10
+                                                            color: "#162033"
+                                                            border.color: "#1f2f45"
+                                                            width: parent ? parent.width : 0
+                                                            implicitHeight: rowLayout.implicitHeight + 24
 
-                                        RowLayout {
-                                            anchors.left: parent.left
-                                            anchors.right: parent.right
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            anchors.margins: 10
-                                            spacing: 10
-                                            Layout.alignment: Qt.AlignVCenter
-                                            Item {
-                                                id: avatarContainer
-                                                width: 44
-                                                height: 44
-                                                Layout.alignment: Qt.AlignVCenter
-                                                Layout.preferredWidth: 44
-                                                Layout.preferredHeight: 44
-                                                Rectangle {
-                                                    id: avatarFrame
-                                                    anchors.fill: parent
-                                                    radius: width / 2
-                                                    color: avatar.length > 0 ? "transparent" : "#1a2436"
-                                                    border.color: avatar.length > 0 ? "transparent" : "#1f2f45"
-                                                    clip: false
-                                                    layer.enabled: avatar.length > 0
-                                                    layer.effect: OpacityMask {
-                                                        source: avatarFrame
-                                                        maskSource: Rectangle {
-                                                            width: avatarFrame.width
-                                                            height: avatarFrame.height
-                                                            radius: avatarFrame.width / 2
-                                                            color: "white"
+                                                            RowLayout {
+                                                                id: rowLayout
+                                                                anchors.fill: parent
+                                                                anchors.margins: 12
+                                                                spacing: 12
+
+                                                                Item {
+                                                                    width: 48
+                                                                    height: 48
+                                                                    Layout.alignment: Qt.AlignVCenter
+                                                                    Layout.preferredWidth: 48
+                                                                    Layout.preferredHeight: 48
+                                                                    Rectangle {
+                                                                        id: memberAvatarFrame
+                                                                        anchors.fill: parent
+                                                                        radius: width / 2
+                                                                        color: avatar.length > 0 ? "transparent" : "#1a2436"
+                                                                        border.color: avatar.length > 0 ? "transparent" : "#1f2f45"
+                                                                        layer.enabled: avatar.length > 0
+                                                                        layer.effect: OpacityMask {
+                                                                            source: memberAvatarFrame
+                                                                            maskSource: Rectangle {
+                                                                                width: memberAvatarFrame.width
+                                                                                height: memberAvatarFrame.height
+                                                                                radius: memberAvatarFrame.width / 2
+                                                                                color: "white"
+                                                                            }
+                                                                        }
+                                                                        Image {
+                                                                            anchors.fill: parent
+                                                                            source: avatar
+                                                                            visible: avatar.length > 0
+                                                                            fillMode: Image.PreserveAspectCrop
+                                                                            smooth: true
+                                                                        }
+                                                                        Label {
+                                                                            anchors.centerIn: parent
+                                                                            visible: avatar.length === 0
+                                                                            text: displayName.length > 0 ? displayName[0] : "?"
+                                                                            color: "#6f7e9c"
+                                                                            font.pixelSize: 18
+                                                                        }
+                                                                    }
+                                                                }
+
+                                                                ColumnLayout {
+                                                                    spacing: 4
+                                                                    Layout.fillWidth: false
+                                                                    Layout.alignment: Qt.AlignVCenter
+
+                                                                    RowLayout {
+                                                                        spacing: 8
+                                                                        Label {
+                                                                            text: displayName
+                                                                            font.pixelSize: 16
+                                                                            color: "#e1edff"
+                                                                            elide: Text.ElideRight
+                                                                        }
+                                                                        Rectangle {
+                                                                            radius: 8
+                                                                            color: "#142033"
+                                                                            border.color: isFriend ? "#23c9a9" : "#ef476f"
+                                                                            implicitHeight: 22
+                                                                            implicitWidth: relationLabel.implicitWidth + 14
+                                                                            Layout.alignment: Qt.AlignVCenter
+                                                                            Label {
+                                                                                id: relationLabel
+                                                                                anchors.centerIn: parent
+                                                                                text: isFriend ? qsTr("好友") : qsTr("陌生人")
+                                                                                color: isFriend ? "#23c9a9" : "#ef476f"
+                                                                                font.pixelSize: 11
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                    Label {
+                                                                        text: qsTr("SteamID: %1").arg(steamId)
+                                                                        font.pixelSize: 12
+                                                                        color: "#7f8cab"
+                                                                        elide: Text.ElideRight
+                                                                    }
+                                                                    Label {
+                                                                        visible: backend.connectionMode === 1
+                                                                        text: qsTr("IP: %1").arg(ip && ip.length > 0 ? ip : qsTr("-"))
+                                                                        font.pixelSize: 12
+                                                                        color: "#7f8cab"
+                                                                        elide: Text.ElideRight
+                                                                    }
+                                                                }
+
+                                                                // --- 3. 关键占位符 (Spacer) ---
+                                                                // 这个 Item 会占据中间所有剩余空间，把后面的 Ping 和 按钮 推到最右边
+                                                                Item {
+                                                                    Layout.fillWidth: true
+                                                                }
+
+                                                                Button {
+                                                                    visible: !isFriend
+                                                                    text: qsTr("添加好友")
+                                                                    Layout.alignment: Qt.AlignVCenter
+                                                                    onClicked: backend.addFriend(steamId)
+                                                                }
+
+                                                                Button {
+                                                                    visible: backend.connectionMode === 1 && ip && ip.length > 0
+                                                                    text: qsTr("复制 IP")
+                                                                    flat: true
+                                                                    Layout.alignment: Qt.AlignVCenter
+                                                                    onClicked: backend.copyToClipboard(ip)
+                                                                }
+
+                                                                // --- 4. Ping 信息列 ---
+                                                                ColumnLayout {
+                                                                    spacing: 2
+                                                                    Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
+                                                                    Label {
+                                                                        text: (ping === undefined || ping === null) ? qsTr("-") : qsTr("%1 ms").arg(ping)
+                                                                        color: "#7fded1"
+                                                                        font.pixelSize: 14
+                                                                        horizontalAlignment: Text.AlignRight
+                                                                        Layout.alignment: Qt.AlignRight
+                                                                    }
+                                                                    Label {
+                                                                        text: relay.length > 0 ? relay : "-"
+                                                                        color: "#8ea4c8"
+                                                                        font.pixelSize: 12
+                                                                        horizontalAlignment: Text.AlignRight
+                                                                        Layout.alignment: Qt.AlignRight
+                                                                    }
+                                                                }
+
+                                                                // --- 5. 按钮区域 (移动到这里) ---
+                                                                // 直接放在 RowLayout 中，它们会自动排列在 Ping 信息右侧
+                                                            }
                                                         }
                                                     }
-                                                    Image {
-                                                        anchors.fill: parent
-                                                        source: avatar
-                                                        visible: avatar.length > 0
-                                                        fillMode: Image.PreserveAspectCrop
-                                                        smooth: true
-                                                    }
-                                                    Label {
-                                                        anchors.centerIn: parent
-                                                        visible: avatar.length === 0
-                                                        text: displayName.length > 0 ? displayName[0] : "?"
-                                                        color: "#6f7e9c"
-                                                        font.pixelSize: 16
-                                                    }
                                                 }
-                                                Rectangle {
-                                                    width: 12
-                                                    height: 12
-                                                    radius: 6
-                                                    color: "#2dd6c1"
-                                                    border.color: "#111827"
-                                                    border.width: 2
-                                                    anchors.top: parent.top
-                                                    anchors.right: parent.right
-                                                    anchors.margins: -2
-                                                    z: 2
-                                                    visible: online
-                                                }
-                                            }
-                                            ColumnLayout {
-                                                spacing: 2
-                                                Layout.fillWidth: true
-                                                Layout.alignment: Qt.AlignVCenter
-                                                RowLayout {
-                                                    Layout.fillWidth: true
+
+                                                Column {
+                                                    visible: memberRepeater.count === 0
+                                                    anchors.centerIn: parent
                                                     spacing: 6
-                                                    Label {
-                                                        text: displayName
-                                                        color: "#e1edff"
-                                                        font.pixelSize: 15
-                                                        elide: Text.ElideRight
-                                                        Layout.fillWidth: true
-                                                    }
-                                                    Label {
-                                                        text: status
-                                                        color: online ? "#2dd6c1" : "#7f8cab"
-                                                        font.pixelSize: 12
-                                                        visible: status.length > 0
-                                                    }
+                                                    Label { text: qsTr("暂无成员"); color: "#8090b3" }
+                                                    Label { text: qsTr("创建房间或等待邀请即可出现。"); color: "#62708f"; font.pixelSize: 12 }
                                                 }
-                                                Label { text: steamId; color: "#7f8cab"; font.pixelSize: 12; elide: Text.ElideRight }
-                                            }
-                                            Item { Layout.fillWidth: true }
-                                            Button {
-                                                text: inviteCooldown === 0
-                                                ? qsTr("邀请")
-                                                : qsTr("等待 %1s").arg(inviteCooldown)
-                                                enabled: (backend.isHost || backend.isConnected) && inviteCooldown === 0
-                                                Layout.alignment: Qt.AlignVCenter
-                                                onClicked: backend.inviteFriend(steamId)
                                             }
                                         }
                                     }
                                 }
 
-                                Column {
-                                    visible: friendList.count === 0
-                                    anchors.centerIn: parent
-                                    spacing: 6
-                                    Label { text: qsTr("未获取到好友列表"); color: "#8090b3" }
-                                    Label { text: qsTr("确保已登录 Steam 并允许好友可见。"); color: "#62708f"; font.pixelSize: 12 }
+                                Item {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        spacing: 12
+
+                                        RowLayout {
+
+                                            TextField {
+                                                id: filterField
+                                                Layout.fillWidth: true
+                                                placeholderText: qsTr("搜索好友…")
+                                                text: win.friendFilter
+                                                onTextChanged: {
+                                                    win.friendFilter = text
+                                                    backend.friendFilter = text
+                                                }
+                                            }
+                                            Rectangle { Layout.fillWidth: true; color: "transparent" }
+                                            Item {
+                                                implicitWidth: 35
+                                                implicitHeight: 35
+                                                Layout.alignment: Qt.AlignVCenter
+
+                                                BusyIndicator {
+                                                    anchors.fill: parent
+                                                    running: backend.friendsRefreshing
+                                                    visible: running
+                                                }
+                                            }
+                                        }
+
+                                        Item {
+                                            Layout.fillWidth: true
+                                            Layout.fillHeight: true
+                                            Layout.preferredHeight: 320
+
+                                            ListView {
+                                                id: friendList
+                                                anchors.fill: parent
+                                                anchors.margins: 8
+                                                clip: true
+                                                spacing: 10
+                                                model: backend.friendsModel
+                                                ScrollBar.vertical: ScrollBar {}
+
+                                                Component.onCompleted: {
+                                                    console.log("[QML] friendList completed, model count", model ? model.count : "<null>")
+                                                }
+                                                onModelChanged: console.log("[QML] friendList model changed", model)
+
+                                                onCountChanged: console.log("[QML] friendList count", count)
+
+                                                delegate: Rectangle {
+                                                    required property string displayName
+                                                    required property string steamId
+                                                    required property string avatar
+                                                    required property bool online
+                                                    required property string status
+                                                    required property int inviteCooldown
+                                                    width: friendList.width
+
+                                                    Component.onCompleted: {
+                                                        console.log("[QML] delegate", displayName, steamId)
+                                                    }
+
+                                                    visible: true // ordering handled by proxy, we keep all items
+                                                    radius: 10
+                                                    color: "#162033"
+                                                    border.color: "#1f2f45"
+                                                    implicitHeight: 60
+                                                    Layout.fillWidth: true
+
+                                                    RowLayout {
+                                                        anchors.left: parent.left
+                                                        anchors.right: parent.right
+                                                        anchors.verticalCenter: parent.verticalCenter
+                                                        anchors.margins: 10
+                                                        spacing: 10
+                                                        Layout.alignment: Qt.AlignVCenter
+                                                        Item {
+                                                            id: avatarContainer
+                                                            width: 44
+                                                            height: 44
+                                                            Layout.alignment: Qt.AlignVCenter
+                                                            Layout.preferredWidth: 44
+                                                            Layout.preferredHeight: 44
+                                                            Rectangle {
+                                                                id: avatarFrame
+                                                                anchors.fill: parent
+                                                                radius: width / 2
+                                                                color: avatar.length > 0 ? "transparent" : "#1a2436"
+                                                                border.color: avatar.length > 0 ? "transparent" : "#1f2f45"
+                                                                clip: false
+                                                                layer.enabled: avatar.length > 0
+                                                                layer.effect: OpacityMask {
+                                                                    source: avatarFrame
+                                                                    maskSource: Rectangle {
+                                                                        width: avatarFrame.width
+                                                                        height: avatarFrame.height
+                                                                        radius: avatarFrame.width / 2
+                                                                        color: "white"
+                                                                    }
+                                                                }
+                                                                Image {
+                                                                    anchors.fill: parent
+                                                                    source: avatar
+                                                                    visible: avatar.length > 0
+                                                                    fillMode: Image.PreserveAspectCrop
+                                                                    smooth: true
+                                                                }
+                                                                Label {
+                                                                    anchors.centerIn: parent
+                                                                    visible: avatar.length === 0
+                                                                    text: displayName.length > 0 ? displayName[0] : "?"
+                                                                    color: "#6f7e9c"
+                                                                    font.pixelSize: 16
+                                                                }
+                                                            }
+                                                            Rectangle {
+                                                                width: 12
+                                                                height: 12
+                                                                radius: 6
+                                                                color: "#2dd6c1"
+                                                                border.color: "#111827"
+                                                                border.width: 2
+                                                                anchors.top: parent.top
+                                                                anchors.right: parent.right
+                                                                anchors.margins: -2
+                                                                z: 2
+                                                                visible: online
+                                                            }
+                                                        }
+                                                        ColumnLayout {
+                                                            spacing: 2
+                                                            Layout.fillWidth: true
+                                                            Layout.alignment: Qt.AlignVCenter
+                                                            RowLayout {
+                                                                Layout.fillWidth: true
+                                                                spacing: 6
+                                                                Label {
+                                                                    text: displayName
+                                                                    color: "#e1edff"
+                                                                    font.pixelSize: 15
+                                                                    elide: Text.ElideRight
+                                                                    Layout.fillWidth: true
+                                                                }
+                                                                Label {
+                                                                    text: status
+                                                                    color: online ? "#2dd6c1" : "#7f8cab"
+                                                                    font.pixelSize: 12
+                                                                    visible: status.length > 0
+                                                                }
+                                                            }
+                                                            Label { text: steamId; color: "#7f8cab"; font.pixelSize: 12; elide: Text.ElideRight }
+                                                        }
+                                                        Item { Layout.fillWidth: true }
+                                                        Button {
+                                                            text: inviteCooldown === 0
+                                                            ? qsTr("邀请")
+                                                            : qsTr("等待 %1s").arg(inviteCooldown)
+                                                            enabled: (backend.isHost || backend.isConnected) && inviteCooldown === 0
+                                                            Layout.alignment: Qt.AlignVCenter
+                                                            onClicked: backend.inviteFriend(steamId)
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            Column {
+                                                visible: friendList.count === 0
+                                                anchors.centerIn: parent
+                                                spacing: 6
+                                                Label { text: qsTr("未获取到好友列表"); color: "#8090b3" }
+                                                Label { text: qsTr("确保已登录 Steam 并允许好友可见。"); color: "#62708f"; font.pixelSize: 12 }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
