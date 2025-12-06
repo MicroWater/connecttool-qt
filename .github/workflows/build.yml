@@ -120,15 +120,6 @@ jobs:
           }
           $projectDir = (Get-Location).ProviderPath
           & $windeploy --release --force-openssl --dir "$dest\bin" --qmldir "$projectDir\qml" "$dest\bin\connecttool-qt.exe"
-      - name: Prune debug Qt DLLs (Windows)
-        shell: bash
-        run: |
-          set -euo pipefail
-          DEST="${{ github.workspace }}/install"
-          shopt -s nullglob globstar
-          for dll in "$DEST"/**/*d.dll; do
-            rm -f "$dll"
-          done
       - name: Flatten Windows bundle layout
         shell: bash
         run: |

@@ -916,10 +916,10 @@ ApplicationWindow {
                                     return;
                                 }
                                 backend.pinChatMessage(entry.steamId || "",
-                                                       entry.displayName || "",
-                                                       entry.avatar || "",
-                                                       entry.message,
-                                                       entry.timestamp);
+                                entry.displayName || "",
+                                entry.avatar || "",
+                                entry.message,
+                                entry.timestamp);
                             }
 
                             function clearPinned() {
@@ -1016,6 +1016,7 @@ ApplicationWindow {
                                                         id: memberRepeater
                                                         model: backend.membersModel
                                                         delegate: Rectangle {
+                                                            id: memberItem // 给这个矩形加个 ID 方便引用
                                                             required property string displayName
                                                             required property string steamId
                                                             required property string avatar
@@ -1025,10 +1026,46 @@ ApplicationWindow {
                                                             required property bool isFriend
 
                                                             radius: 10
-                                                            color: "#162033"
+                                                            // 修改颜色逻辑：增加鼠标悬停变色效果，提示用户可交互
+                                                            color: memberMouseArea.containsMouse ? "#1c293c" : "#162033"
                                                             border.color: "#1f2f45"
                                                             width: parent ? parent.width : 0
                                                             implicitHeight: rowLayout.implicitHeight + 24
+
+                                                            // 1. 定义右键菜单
+                                                            Menu {
+                                                                id: memberMenu
+                                                                // 只有当至少有一个操作可用时，菜单才有意义，但在 UI 上我们总是允许弹出，只是禁用选项
+                                                                MenuItem {
+                                                                    id: addFriendItem
+                                                                    text: qsTr("添加好友")
+                                                                    visible: !isFriend
+                                                                    // 关键：不可见时，把高度设为 0
+                                                                    height: visible ? implicitHeight : 0
+                                                                    onTriggered: backend.addFriend(steamId)
+                                                                }
+
+                                                                MenuItem {
+                                                                    text: qsTr("复制 IP")
+                                                                    visible: backend.connectionMode === 1 && ip && ip.length > 0
+                                                                    height: visible ? implicitHeight : 0   // 这个也建议顺手加一下
+                                                                    onTriggered: backend.copyToClipboard(ip)
+                                                                }
+
+                                                            }
+
+                                                            // 2. 覆盖整个卡片的鼠标区域
+                                                            MouseArea {
+                                                                id: memberMouseArea
+                                                                anchors.fill: parent
+                                                                hoverEnabled: true
+                                                                acceptedButtons: Qt.RightButton
+                                                                onClicked: (mouse) => {
+                                                                    if (mouse.button === Qt.RightButton) {
+                                                                        memberMenu.popup()
+                                                                    }
+                                                                }
+                                                            }
 
                                                             RowLayout {
                                                                 id: rowLayout
@@ -1036,6 +1073,7 @@ ApplicationWindow {
                                                                 anchors.margins: 12
                                                                 spacing: 12
 
+                                                                // ---头像部分 (保持不变)---
                                                                 Item {
                                                                     width: 48
                                                                     height: 48
@@ -1075,6 +1113,7 @@ ApplicationWindow {
                                                                     }
                                                                 }
 
+                                                                // ---文字信息部分 (保持不变)---
                                                                 ColumnLayout {
                                                                     spacing: 4
                                                                     Layout.fillWidth: false
@@ -1119,28 +1158,15 @@ ApplicationWindow {
                                                                     }
                                                                 }
 
-                                                                // --- 3. 关键占位符 (Spacer) ---
-                                                                // 这个 Item 会占据中间所有剩余空间，把后面的 Ping 和 按钮 推到最右边
+                                                                // --- 关键占位符 ---
+                                                                // 占据剩余空间，把后面的 Ping 推到最右边
                                                                 Item {
                                                                     Layout.fillWidth: true
                                                                 }
 
-                                                                Button {
-                                                                    visible: !isFriend
-                                                                    text: qsTr("添加好友")
-                                                                    Layout.alignment: Qt.AlignVCenter
-                                                                    onClicked: backend.addFriend(steamId)
-                                                                }
+                                                                // 【注意】这里删除了之前的 Button 代码
 
-                                                                Button {
-                                                                    visible: backend.connectionMode === 1 && ip && ip.length > 0
-                                                                    text: qsTr("复制 IP")
-                                                                    flat: true
-                                                                    Layout.alignment: Qt.AlignVCenter
-                                                                    onClicked: backend.copyToClipboard(ip)
-                                                                }
-
-                                                                // --- 4. Ping 信息列 ---
+                                                                // --- Ping 信息列 (保持不变) ---
                                                                 ColumnLayout {
                                                                     spacing: 2
                                                                     Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
@@ -1159,9 +1185,6 @@ ApplicationWindow {
                                                                         Layout.alignment: Qt.AlignRight
                                                                     }
                                                                 }
-
-                                                                // --- 5. 按钮区域 (移动到这里) ---
-                                                                // 直接放在 RowLayout 中，它们会自动排列在 Ping 信息右侧
                                                             }
                                                         }
                                                     }
