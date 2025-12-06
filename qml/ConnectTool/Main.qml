@@ -104,8 +104,7 @@ ApplicationWindow {
             if (!url || url.length === 0) {
                 return;
             }
-            var path = url.startsWith("file://") ? url.slice(7) : url
-            backend.downloadUpdate(downloadSource.currentIndex === 1, path)
+            backend.downloadUpdate(downloadSource.currentIndex === 1, url)
         }
     }
 
@@ -1032,15 +1031,12 @@ ApplicationWindow {
                                                             width: parent ? parent.width : 0
                                                             implicitHeight: rowLayout.implicitHeight + 24
 
-                                                            // 1. 定义右键菜单
                                                             Menu {
                                                                 id: memberMenu
-                                                                // 只有当至少有一个操作可用时，菜单才有意义，但在 UI 上我们总是允许弹出，只是禁用选项
                                                                 MenuItem {
                                                                     id: addFriendItem
                                                                     text: qsTr("添加好友")
                                                                     visible: !isFriend
-                                                                    // 关键：不可见时，把高度设为 0
                                                                     height: visible ? implicitHeight : 0
                                                                     onTriggered: backend.addFriend(steamId)
                                                                 }
@@ -1048,13 +1044,12 @@ ApplicationWindow {
                                                                 MenuItem {
                                                                     text: qsTr("复制 IP")
                                                                     visible: backend.connectionMode === 1 && ip && ip.length > 0
-                                                                    height: visible ? implicitHeight : 0   // 这个也建议顺手加一下
+                                                                    height: visible ? implicitHeight : 0
                                                                     onTriggered: backend.copyToClipboard(ip)
                                                                 }
 
                                                             }
 
-                                                            // 2. 覆盖整个卡片的鼠标区域
                                                             MouseArea {
                                                                 id: memberMouseArea
                                                                 anchors.fill: parent
@@ -1062,7 +1057,12 @@ ApplicationWindow {
                                                                 acceptedButtons: Qt.RightButton
                                                                 onClicked: (mouse) => {
                                                                     if (mouse.button === Qt.RightButton) {
-                                                                        memberMenu.popup()
+                                                                        const hasMenu =
+                                                                            addFriendItem.visible ||
+                                                                            copyIpItem.visible
+
+                                                                        if (hasMenu)
+                                                                            memberMenu.popup()
                                                                     }
                                                                 }
                                                             }

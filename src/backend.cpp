@@ -2067,7 +2067,27 @@ void Backend::downloadUpdate(bool useProxy, const QString &targetPath) {
     emit updateInfoChanged();
     return;
   }
-  QString pathInput = targetPath;
+  QString pathInput = targetPath.trimmed();
+
+  // Accept both raw file paths and file:// URLs (e.g. file:///C:/path/on/windows)
+  const QUrl parsed = QUrl::fromUserInput(pathInput);
+  if (parsed.isLocalFile()) {
+    const QString local = parsed.toLocalFile();
+    if (!local.isEmpty()) {
+      pathInput = local;
+    }
+  }
+
+#ifdef Q_OS_WIN
+  // File URLs sliced in QML may come through as "/C:/path"; drop the leading
+  // slash so QDir treats it as a proper drive path.
+  if (pathInput.startsWith('/') && pathInput.size() > 2 &&
+      pathInput[1].isLetter() && pathInput[2] == QLatin1Char(':')) {
+    pathInput.remove(0, 1);
+  }
+#endif
+
+  pathInput = QDir::fromNativeSeparators(pathInput);
   if (pathInput.isEmpty()) {
     updateStatusText_ = tr("请选择下载目录。");
     emit updateInfoChanged();
