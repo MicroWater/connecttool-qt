@@ -142,6 +142,25 @@ void SteamNetworkingManager::shutdown() {
 
 bool SteamNetworkingManager::connectToHostInternal(
     const CSteamID &hostSteamID, bool relayOnly) {
+  {
+    // Avoid stacking multiple connections to the same peer; close stale one
+    // before issuing another ConnectP2P to prevent duplicate asserts.
+    std::lock_guard<std::mutex> lock(connectionsMutex);
+    if (g_hConnection != k_HSteamNetConnection_Invalid) {
+      SteamNetConnectionInfo_t info;
+      if (m_pInterface->GetConnectionInfo(g_hConnection, &info)) {
+        std::cout << "[SteamNet] Closing stale connection to "
+                  << info.m_identityRemote.GetSteamID().ConvertToUint64()
+                  << " before reconnecting" << std::endl;
+      }
+      m_pInterface->CloseConnection(g_hConnection, 0,
+                                    "Replace duplicate connection", false);
+      g_hConnection = k_HSteamNetConnection_Invalid;
+      g_isConnected = false;
+      hostPing_ = 0;
+    }
+  }
+
   SteamNetworkingIdentity identity;
   identity.SetSteamID(hostSteamID);
 
@@ -425,6 +444,45 @@ void SteamNetworkingManager::handleConnectionStatusChanged(
     }
     if (pInfo->m_eOldState == k_ESteamNetworkingConnectionState_None &&
         pInfo->m_info.m_eState == k_ESteamNetworkingConnectionState_Connecting) {
+      // Proactively close duplicate connections to the same peer to avoid
+      // Steam's internal "Duplicate P2P connection" assertion.
+      CSteamID peer = pInfo->m_info.m_identityRemote.GetSteamID();
+      if (peer.IsValid()) {
+        for (auto it = connections.begin(); it != connections.end();) {
+          if (*it == pInfo->m_hConn) {
+            ++it;
+            continue;
+          }
+          SteamNetConnectionInfo_t info;
+          if (m_pInterface->GetConnectionInfo(*it, &info) &&
+              info.m_identityRemote.GetSteamID() == peer) {
+            std::cout << "[SteamNet] Closing duplicate host connection to "
+                      << peer.ConvertToUint64() << std::endl;
+            m_pInterface->CloseConnection(*it, 0,
+                                          "Replace duplicate connection",
+                                          false);
+            it = connections.erase(it);
+            continue;
+          }
+          ++it;
+        }
+
+        if (g_hConnection != k_HSteamNetConnection_Invalid &&
+            g_hConnection != pInfo->m_hConn) {
+          SteamNetConnectionInfo_t info;
+          if (m_pInterface->GetConnectionInfo(g_hConnection, &info) &&
+              info.m_identityRemote.GetSteamID() == peer) {
+            std::cout << "[SteamNet] Closing duplicate client connection to "
+                      << peer.ConvertToUint64() << std::endl;
+            m_pInterface->CloseConnection(
+                g_hConnection, 0, "Replace duplicate connection", false);
+            g_hConnection = k_HSteamNetConnection_Invalid;
+            g_isConnected = false;
+            hostPing_ = 0;
+          }
+        }
+      }
+
       m_pInterface->AcceptConnection(pInfo->m_hConn);
       connections.push_back(pInfo->m_hConn);
       g_hConnection = pInfo->m_hConn;

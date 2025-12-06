@@ -26,6 +26,22 @@ ApplicationWindow {
         { key: "about", title: qsTr("关于"), subtitle: qsTr("关于 ConnectTool") }
     ]
 
+    function syncStartSwitch() {
+        if (!startSwitch) {
+            return;
+        }
+        startSwitch.checked = Qt.binding(() => backend.isHost || backend.isConnected)
+    }
+
+    function syncJoinField() {
+        if (!joinField) {
+            return;
+        }
+        if (joinField.text !== backend.joinTarget) {
+            joinField.text = backend.joinTarget
+        }
+    }
+
     function copyBadge(label, value) {
         if (!value || value.length === 0) {
             return;
@@ -51,7 +67,13 @@ ApplicationWindow {
         }
         function onTunStartDenied() {
             startSwitch.checked = false
-            startSwitch.checked = Qt.binding(() => backend.isHost || backend.isConnected)
+            syncStartSwitch()
+        }
+        function onStateChanged() {
+            syncStartSwitch()
+        }
+        function onJoinTargetChanged() {
+            syncJoinField()
         }
     }
 

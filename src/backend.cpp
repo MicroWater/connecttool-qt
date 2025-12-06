@@ -839,9 +839,7 @@ void Backend::disconnect() {
   updateLobbyInfoSignals();
   setLobbyRefreshing(false);
 
-  if (!lastAutoJoinTarget_.isEmpty() && joinTarget_ == lastAutoJoinTarget_) {
-    setJoinTarget(QString());
-  }
+  setJoinTarget(QString());
   lastAutoJoinTarget_.clear();
   chatModel_.clear();
 
