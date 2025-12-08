@@ -80,6 +80,19 @@ bool SteamNetworkingManager::initialize() {
       k_ESteamNetworkingConfig_SendRateMax, k_ESteamNetworkingConfig_Global, 0,
       k_ESteamNetworkingConfig_Int32, &sendRate);
 
+  // Start with neutral penalties so ICE can be chosen normally; we'll adjust later
+  // based on measured pings in applyTransportPreference.
+  int32 sdrPenaltyDefault = 0;
+  int32 icePenaltyDefault = 0;
+  SteamNetworkingUtils()->SetConfigValue(
+      k_ESteamNetworkingConfig_P2P_Transport_SDR_Penalty,
+      k_ESteamNetworkingConfig_Global, 0, k_ESteamNetworkingConfig_Int32,
+      &sdrPenaltyDefault);
+  SteamNetworkingUtils()->SetConfigValue(
+      k_ESteamNetworkingConfig_P2P_Transport_ICE_Penalty,
+      k_ESteamNetworkingConfig_Global, 0, k_ESteamNetworkingConfig_Int32,
+      &icePenaltyDefault);
+
   // Disable Nagle to reduce latency for tunneled traffic
   int32 nagleTime = 0;
   SteamNetworkingUtils()->SetConfigValue(
@@ -325,13 +338,14 @@ void SteamNetworkingManager::update() {
         hostPing_ = status.m_nPing;
 
         // If we're still stuck in route-finding for too long, fall back to relay.
+        // Give ICE more time on LAN/low-latency paths before forcing a relay retry.
         if (g_isClient && !relayFallbackTried_ &&
             (status.m_eState ==
                  k_ESteamNetworkingConnectionState_FindingRoute ||
              status.m_eState ==
                  k_ESteamNetworkingConnectionState_Connecting) &&
             connectAttemptStart_.time_since_epoch().count() > 0 &&
-            now - connectAttemptStart_ > std::chrono::seconds(5)) {
+            now - connectAttemptStart_ > std::chrono::seconds(8)) {
           std::cout << "[SteamNet] ICE route slow, retrying via relay-only"
                     << std::endl;
           connectionToClose = g_hConnection;
@@ -481,16 +495,20 @@ void SteamNetworkingManager::applyTransportPreference(int directPingMs,
   if (!SteamNetworkingUtils()) {
     return;
   }
-  constexpr int kHysteresisMs = 5;
+
+  const bool hasDirect = directPingMs >= 0;
+  const bool hasRelay = relayPingMs >= 0;
+
+  // Prefer ICE when direct latency is known and competitive; lean on relay only
+  // when it is clearly better. Penalties are virtual ping (ms) offsets.
   int32 sdrPenalty = 0;
   int32 icePenalty = 0;
-
-  if (directPingMs >= 0 && relayPingMs >= 0) {
-    if (directPingMs + kHysteresisMs < relayPingMs) {
-      sdrPenalty = relayPingMs - directPingMs;
-    } else if (relayPingMs + kHysteresisMs < directPingMs) {
-      icePenalty = directPingMs - relayPingMs;
-    }
+  if (hasDirect && (!hasRelay || directPingMs <= relayPingMs + 10)) {
+    sdrPenalty = 150; // tilt toward ICE for LAN/low latency
+    icePenalty = 0;
+  } else if (hasRelay && (!hasDirect || relayPingMs + 15 < directPingMs)) {
+    sdrPenalty = 0;
+    icePenalty = 200; // relay seems significantly better
   }
 
   SteamNetworkingUtils()->SetConfigValue(
@@ -503,8 +521,8 @@ void SteamNetworkingManager::applyTransportPreference(int directPingMs,
       &icePenalty);
 
   std::cout << "[SteamNet] Transport pref: direct=" << directPingMs
-            << "ms, relay≈" << relayPingMs << "ms, SDR penalty="
-            << sdrPenalty << ", ICE penalty=" << icePenalty << std::endl;
+            << "ms, relay≈" << relayPingMs << "ms, ICE penalty=" << icePenalty
+            << ", SDR penalty=" << sdrPenalty << std::endl;
 }
 
 void SteamNetworkingManager::handleConnectionStatusChanged(

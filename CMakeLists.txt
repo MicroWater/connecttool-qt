@@ -4,10 +4,9 @@ project(ConnectToolQt LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Network)
-find_package(Git QUIET)
 
 # Read version from git tag if available
-set(CONNECTTOOL_VERSION "1.5.8")
+set(CONNECTTOOL_VERSION "1.5.9")
 if(DEFINED ENV{CONNECTTOOL_VERSION})
     set(CONNECTTOOL_VERSION "$ENV{CONNECTTOOL_VERSION}")
 endif()

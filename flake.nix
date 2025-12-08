@@ -60,7 +60,7 @@
         {
           default = pkgs.stdenv.mkDerivation rec {
             pname = "connecttool-qt";
-            version = "1.5.8";
+            version = "1.5.9";
 
             # Keep entire working tree (including untracked) so new sources are present.
             src = ./.;

@@ -97,3 +97,29 @@ $ nix run github:moeleak/connecttool-qt --impure
 >    `sudo launchctl kickstart -k system/org.nixos.nix-daemon`
 > 2. 构建：`nix build .#packages.x86_64-darwin.default --impure -L`
 > 3. 运行：`arch -x86_64 ./result/bin/connecttool-qt`
+
+## Benchmark
+
+```
+connecttool-qt on  main via △ v4.1.2 via ❄️  impure (connecttool-qt-shell-env)
+❯ nix run nixpkgs#iperf -- -c 10.103.59.48
+Connecting to host 10.103.59.48, port 5201
+[  5] local 10.40.25.43 port 54798 connected to 10.103.59.48 port 5201
+[ ID] Interval           Transfer     Bitrate
+[  5]   0.00-1.00   sec   896 KBytes  7.34 Mbits/sec
+[  5]   1.00-2.00   sec   768 KBytes  6.26 Mbits/sec
+[  5]   2.00-3.00   sec  1.00 MBytes  8.42 Mbits/sec
+[  5]   3.00-4.00   sec   896 KBytes  7.33 Mbits/sec
+[  5]   4.00-5.00   sec   896 KBytes  7.32 Mbits/sec
+[  5]   5.00-6.00   sec   768 KBytes  6.29 Mbits/sec
+[  5]   6.00-7.01   sec   896 KBytes  7.34 Mbits/sec
+[  5]   7.01-8.00   sec   896 KBytes  7.37 Mbits/sec
+[  5]   8.00-9.01   sec   640 KBytes  5.22 Mbits/sec
+[  5]   9.01-10.00  sec   896 KBytes  7.35 Mbits/sec
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate
+[  5]   0.00-10.00  sec  8.38 MBytes  7.02 Mbits/sec                  sender
+[  5]   0.00-10.11  sec  8.25 MBytes  6.85 Mbits/sec                  receiver
+
+iperf Done.
+```
