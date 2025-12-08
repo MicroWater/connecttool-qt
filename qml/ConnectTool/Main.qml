@@ -395,8 +395,8 @@ ApplicationWindow {
 
                             Repeater {
                                 model: [
-                                    { title: qsTr("房间名"), value: backend.lobbyName, accent: "#7fded1" },
-                                    { title: qsTr("房间 ID"), value: backend.lobbyId, accent: "#23c9a9" },
+                                    { title: qsTr("房间名"), value: backend.lobbyName, copyValue: backend.lobbyName, accent: "#7fded1" },
+                                    { title: qsTr("房间 ID"), value: backend.lobbyId, copyValue: backend.lobbyId, accent: "#23c9a9" },
                                     backend.connectionMode === 1
                                     ? {
                                         title: qsTr("TUN 信息"),
@@ -421,7 +421,10 @@ ApplicationWindow {
                                     required property string title
                                     required property string value
                                     required property string accent
-                                    property string copyValue: value
+                                    property string copyValue: (typeof modelData !== "undefined" && modelData.copyValue !== undefined) ? modelData.copyValue : ""
+                                    property bool isTunCard: title === qsTr("TUN 信息")
+                                    property string effectiveCopyValue: isTunCard ? backend.tunLocalIp : copyValue
+                                    property bool canCopy: effectiveCopyValue.length > 0 || value.length > 0
                                     radius: 10
                                     color: "#151e2f"
                                     border.color: "#243149"
@@ -459,9 +462,15 @@ ApplicationWindow {
 
                                     MouseArea {
                                         anchors.fill: parent
-                                        enabled: value.length > 0
+                                        enabled: canCopy
                                         cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                                        onClicked: win.copyBadge(title, copyValue)
+                                        onClicked: {
+                                            if (!canCopy) {
+                                                return;
+                                            }
+                                            const text = effectiveCopyValue.length > 0 ? effectiveCopyValue : value
+                                            win.copyBadge(title, text)
+                                        }
                                     }
                                 }
                             }
@@ -1029,6 +1038,7 @@ ApplicationWindow {
                                                             required property var ping
                                                             required property string relay
                                                             required property bool isFriend
+                                                            required property bool isSelf
 
                                                             radius: 10
                                                             // 修改颜色逻辑：增加鼠标悬停变色效果，提示用户可交互
@@ -1078,11 +1088,13 @@ ApplicationWindow {
                                                                 anchors.fill: parent
                                                                 anchors.margins: 12
                                                                 spacing: 12
+                                                                // Force-resolve "自己" even if role binding fails; fallback to backend.selfSteamId match.
+                                                                property bool selfFlag: isSelf || (backend.selfSteamId.length > 0 && steamId === backend.selfSteamId)
 
-                                                                // ---头像部分 (保持不变)---
-                                                                Item {
-                                                                    width: 48
-                                                                    height: 48
+                                            // ---头像部分 (保持不变)---
+                                            Item {
+                                                width: 48
+                                                height: 48
                                                                     Layout.alignment: Qt.AlignVCenter
                                                                     Layout.preferredWidth: 48
                                                                     Layout.preferredHeight: 48
@@ -1136,15 +1148,15 @@ ApplicationWindow {
                                                                         Rectangle {
                                                                             radius: 8
                                                                             color: "#142033"
-                                                                            border.color: isFriend ? "#23c9a9" : "#ef476f"
+                                                                            border.color: rowLayout.selfFlag ? "#7fded1" : (isFriend ? "#23c9a9" : "#ef476f")
                                                                             implicitHeight: 22
                                                                             implicitWidth: relationLabel.implicitWidth + 14
                                                                             Layout.alignment: Qt.AlignVCenter
                                                                             Label {
                                                                                 id: relationLabel
                                                                                 anchors.centerIn: parent
-                                                                                text: isFriend ? qsTr("好友") : qsTr("陌生人")
-                                                                                color: isFriend ? "#23c9a9" : "#ef476f"
+                                                                                text: rowLayout.selfFlag ? qsTr("自己") : (isFriend ? qsTr("好友") : qsTr("陌生人"))
+                                                                                color: rowLayout.selfFlag ? "#7fded1" : (isFriend ? "#23c9a9" : "#ef476f")
                                                                                 font.pixelSize: 11
                                                                             }
                                                                         }
