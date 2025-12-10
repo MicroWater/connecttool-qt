@@ -3,6 +3,11 @@
 [![Latest Release](https://img.shields.io/github/v/release/moeleak/connecttool-qt?display_name=tag&sort=semver&color=23c9a9)](https://github.com/moeleak/connecttool-qt/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/moeleak/connecttool-qt/total?logo=github&color=2ad2ff)](https://github.com/moeleak/connecttool-qt/releases)
 
+![warning](https://i.imgur.com/TxCC3c4.png) 使用可能会导致账号被
+[ban](https://store.steampowered.com/subscriber_agreement/Steam#2)，若要使用本项目建议用小号，但
+online-fix 跟本项目同原理使用 Steam 网络进行联机，从 2017 年开始传播，峰值日火
+13w 仍未被 Valve 封禁。Use at your own risk!
+
 connecttool-qt 是一款基于 connecttool
 重制的图形化工具，相比主线分支优化了跨平台支持，网络性能以及拥有更好的 UI
 界面，可以利用 Steam Network 进行 TCP 转发或类似 Tailscale 的异地组网效果（TUN
