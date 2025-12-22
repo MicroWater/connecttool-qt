@@ -365,6 +365,8 @@ jobs:
             cmake \
             ninja-build \
             patchelf \
+            libsdl2-dev \
+            libvulkan-dev \
             libgl1-mesa-dev \
             libxkbcommon-dev \
             libxkbcommon-x11-0 \
