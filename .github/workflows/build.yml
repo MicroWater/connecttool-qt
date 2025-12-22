@@ -463,8 +463,8 @@ jobs:
         shell: bash
         env:
           QML_SOURCES_PATHS: ${{ github.workspace }}/qml
-          EXTRA_PLATFORM_PLUGINS: libqwayland-generic.so
           EXTRA_QT_MODULES: waylandcompositor
+          EXTRA_PLATFORM_PLUGINS: libqwayland.so
         run: |
           set -euo pipefail
           appdir="${{ github.workspace }}/AppDir"
