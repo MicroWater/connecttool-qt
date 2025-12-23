@@ -455,8 +455,8 @@ Backend::Backend(QObject *parent)
       roomName_(QCoreApplication::translate("Backend", "ConnectTool 房间")),
       appVersion_(QStringLiteral(CONNECTTOOL_VERSION)) {
   // Set a default app id so Steam can bootstrap in development environments
-  qputenv("SteamAppId", QByteArray("480"));
-  qputenv("SteamGameId", QByteArray("480"));
+  qputenv("SteamAppId", QByteArray("570"));
+  qputenv("SteamGameId", QByteArray("570"));
   updateStatusText_.clear();
 
 #ifdef Q_OS_WIN
