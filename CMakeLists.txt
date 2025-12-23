@@ -253,7 +253,7 @@ qt_add_qml_module(connecttool-qt
 
 target_compile_definitions(connecttool-qt PRIVATE CONNECTTOOL_VERSION="${CONNECTTOOL_VERSION}")
 
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/steam_appid.txt "480\n")
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/steam_appid.txt "570\n")
 if(APPLE)
     install(TARGETS connecttool-qt BUNDLE DESTINATION .)
 else()
