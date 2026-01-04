@@ -119,7 +119,9 @@ ApplicationWindow {
         contentItem: Column {
             spacing: 12
             Label {
-                text: qsTr("请使用管理员身份重新打开程序后再尝试启用TUN模式")
+                text: Qt.platform.os === "osx"
+                      ? qsTr("需要管理员权限安装 TUN 守护进程，请授权后再尝试启用 TUN 模式。")
+                      : qsTr("请使用管理员身份重新打开程序后再尝试启用TUN模式")
                 wrapMode: Text.WordWrap
                 width: 300
             }

@@ -7,6 +7,9 @@
 #include "../steam/steam_vpn_bridge.h"
 #include "../steam/steam_vpn_networking_manager.h"
 #include "firewall_windows.h"
+#ifdef Q_OS_MACOS
+#include "tun_privileged_helper.h"
+#endif
 
 #include <QClipboard>
 #include <QCoreApplication>
@@ -70,6 +73,35 @@ struct PersonaDisplay {
   int priority;
 };
 
+#ifdef Q_OS_MACOS
+QString appleScriptEscape(const QString &value) {
+  QString escaped = value;
+  escaped.replace("\\", "\\\\");
+  escaped.replace("\"", "\\\"");
+  return escaped;
+}
+
+QString shellEscape(const QString &value) {
+  QString escaped = value;
+  escaped.replace("'", "'\\''");
+  return "'" + escaped + "'";
+}
+
+QString locateBundledHelperAsset(const QString &fileName) {
+  const QDir appDir(QCoreApplication::applicationDirPath());
+  const QString resourcePath =
+      appDir.absoluteFilePath(QStringLiteral("../Resources/%1").arg(fileName));
+  if (QFileInfo::exists(resourcePath)) {
+    return QFileInfo(resourcePath).absoluteFilePath();
+  }
+  const QString besideApp = appDir.absoluteFilePath(fileName);
+  if (QFileInfo::exists(besideApp)) {
+    return QFileInfo(besideApp).absoluteFilePath();
+  }
+  return {};
+}
+#endif
+
 bool currentUserIsAdmin() {
 #ifdef Q_OS_WIN
   HANDLE token = nullptr;
@@ -86,6 +118,14 @@ bool currentUserIsAdmin() {
   return geteuid() == 0;
 #else
   return true;
+#endif
+}
+
+bool currentUserHasTunPrivileges() {
+#ifdef Q_OS_MACOS
+  return currentUserIsAdmin() || tun::helperAvailable();
+#else
+  return currentUserIsAdmin();
 #endif
 }
 
@@ -525,6 +565,10 @@ Backend::Backend(QObject *parent)
 
   tryInitializeSteam();
 
+#ifdef Q_OS_MACOS
+  QTimer::singleShot(0, this, &Backend::ensureTunHelperInstalled);
+#endif
+
   callbackTimer_.start(16);
   slowTimer_.start(15000);
   steamCheckTimer_.start(3000);
@@ -796,7 +840,63 @@ bool Backend::ensureSteamReady(const QString &actionLabel) {
   return false;
 }
 
-bool Backend::hasAdminPrivileges() const { return currentUserIsAdmin(); }
+bool Backend::hasAdminPrivileges() const { return currentUserHasTunPrivileges(); }
+
+#ifdef Q_OS_MACOS
+void Backend::ensureTunHelperInstalled() {
+  if (tunHelperInstallAttempted_) {
+    return;
+  }
+  tunHelperInstallAttempted_ = true;
+  if (currentUserIsAdmin() || tun::helperAvailable()) {
+    return;
+  }
+
+  const QString helperPath =
+      locateBundledHelperAsset(QStringLiteral("connecttool-tun-daemon"));
+  const QString plistPath =
+      locateBundledHelperAsset(QStringLiteral("com.connecttool.tunhelper.plist"));
+  if (helperPath.isEmpty() || plistPath.isEmpty()) {
+    qWarning() << "TUN helper assets not found; skipping auto install.";
+    return;
+  }
+
+  const QString helperDest =
+      QStringLiteral("/Library/PrivilegedHelperTools/connecttool-tun-daemon");
+  const QString plistDest =
+      QStringLiteral("/Library/LaunchDaemons/com.connecttool.tunhelper.plist");
+
+  QString command =
+      QStringLiteral("/bin/mkdir -p /Library/PrivilegedHelperTools /Library/LaunchDaemons; "
+                     "/bin/cp -f %1 %2; /bin/chmod 755 %2; "
+                     "/bin/cp -f %3 %4; /bin/chmod 644 %4; "
+                     "/bin/launchctl bootstrap system %4 2>/dev/null || "
+                     "/bin/launchctl load -w %4; "
+                     "/bin/launchctl kickstart -k system/com.connecttool.tunhelper "
+                     "2>/dev/null || true")
+          .arg(shellEscape(helperPath), shellEscape(helperDest),
+               shellEscape(plistPath), shellEscape(plistDest));
+
+  const QString appleScript = QStringLiteral(
+                                  "do shell script \"%1\" with administrator privileges")
+                                  .arg(appleScriptEscape(command));
+
+  auto *process = new QProcess(this);
+  connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+          this, [process](int exitCode, QProcess::ExitStatus status) {
+            if (status != QProcess::NormalExit || exitCode != 0) {
+              qWarning() << "TUN helper install failed with code" << exitCode;
+            }
+            process->deleteLater();
+          });
+  process->start(QStringLiteral("/usr/bin/osascript"),
+                 {QStringLiteral("-e"), appleScript});
+  if (!process->waitForStarted(2000)) {
+    qWarning() << "Failed to launch osascript for TUN helper install.";
+    process->deleteLater();
+  }
+}
+#endif
 
 bool Backend::ensureTunPrivileges() {
   if (hasAdminPrivileges()) {

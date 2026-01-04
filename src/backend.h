@@ -242,6 +242,9 @@ private:
   bool ensureTunPrivileges();
   bool tryInitializeSteam();
   void refreshSelfSteamId();
+#ifdef Q_OS_MACOS
+  void ensureTunHelperInstalled();
+#endif
 
   std::unique_ptr<SteamNetworkingManager> steamManager_;
   std::unique_ptr<SteamVpnNetworkingManager> vpnManager_;
@@ -258,6 +261,9 @@ private:
   QTimer slowTimer_;
   QTimer cooldownTimer_;
   QTimer friendsRefreshResetTimer_;
+#ifdef Q_OS_MACOS
+  bool tunHelperInstallAttempted_ = false;
+#endif
   QTimer statusOverrideTimer_;
 
   bool steamReady_;

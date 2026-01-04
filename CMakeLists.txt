@@ -132,9 +132,19 @@ if(WIN32)
         src/firewall_windows.cpp
         resources/connecttool.rc)
 elseif(APPLE)
-    target_sources(connecttool-qt PRIVATE tun/tun_macos.cpp)
+    target_sources(connecttool-qt PRIVATE
+        tun/tun_macos.cpp
+        tun/tun_privileged_helper.cpp)
 else()
     target_sources(connecttool-qt PRIVATE tun/tun_linux.cpp)
+endif()
+
+if(APPLE)
+    add_executable(connecttool-tun-daemon
+        tun/tun_macos_daemon.cpp
+        tun/tun_privileged_helper.cpp)
+    target_include_directories(connecttool-tun-daemon PRIVATE tun)
+    add_dependencies(connecttool-qt connecttool-tun-daemon)
 endif()
 
 target_include_directories(connecttool-qt PRIVATE
@@ -198,12 +208,20 @@ if(APPLE)
     add_custom_command(TARGET connecttool-qt POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory
                 "${_steamworks_bundle_frameworks}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+                "$<TARGET_BUNDLE_DIR:connecttool-qt>/Contents/Resources"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 ${STEAMWORKS_RUNTIME_LIBRARIES}
                 "${_steamworks_bundle_frameworks}"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 ${CMAKE_CURRENT_BINARY_DIR}/steam_appid.txt
                 "$<TARGET_BUNDLE_DIR:connecttool-qt>/Contents/MacOS"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "$<TARGET_FILE:connecttool-tun-daemon>"
+                "$<TARGET_BUNDLE_DIR:connecttool-qt>/Contents/Resources/connecttool-tun-daemon"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${CMAKE_SOURCE_DIR}/resources/macos/com.connecttool.tunhelper.plist"
+                "$<TARGET_BUNDLE_DIR:connecttool-qt>/Contents/Resources/com.connecttool.tunhelper.plist"
         COMMAND install_name_tool -id
                 "@loader_path/../Frameworks/libsteam_api.dylib"
                 "${_steamworks_bundle_frameworks}/libsteam_api.dylib"

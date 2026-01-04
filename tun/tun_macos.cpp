@@ -1,6 +1,7 @@
 #ifdef __APPLE__
 
 #include "tun_interface.h"
+#include "tun_privileged_helper.h"
 #include <arpa/inet.h>
 #include <cctype>
 #include <cerrno>
@@ -65,7 +66,7 @@ int maskToPrefix(const std::string &mask) {
 
 class TunMacOS : public TunInterface {
 public:
-  TunMacOS() : fd_(-1), mtu_(1500) {}
+  TunMacOS() : fd_(-1), mtu_(1500), usingHelper_(false) {}
   ~TunMacOS() override { close(); }
 
   bool open(const std::string &deviceName, int mtu) override {
@@ -76,6 +77,23 @@ public:
     if (fd_ >= 0) {
       lastError_ = "Already open";
       return false;
+    }
+    if (geteuid() != 0 && helperAvailable()) {
+      HelperOpenResult result;
+      if (!helperOpen(deviceName, mtu, &result)) {
+        lastError_ =
+            result.error.empty() ? "Helper open failed" : result.error;
+        return false;
+      }
+      if (result.fd < 0 || result.interfaceName.empty()) {
+        lastError_ = "Helper returned invalid TUN device";
+        return false;
+      }
+      fd_ = result.fd;
+      name_ = result.interfaceName;
+      mtu_ = mtu;
+      usingHelper_ = true;
+      return true;
     }
     fd_ = ::socket(PF_SYSTEM, SOCK_DGRAM, SYSPROTO_CONTROL);
     if (fd_ < 0) {
@@ -129,6 +147,7 @@ public:
       ::close(fd_);
       fd_ = -1;
     }
+    usingHelper_ = false;
   }
 
   bool is_open() const override { return fd_ >= 0; }
@@ -179,6 +198,14 @@ public:
       lastError_ = "Invalid IP or netmask";
       return false;
     }
+    if (usingHelper_) {
+      std::string error;
+      if (!helperSetIp(name_, ip, netmask, &error)) {
+        lastError_ = error.empty() ? "Helper set_ip failed" : error;
+        return false;
+      }
+      return true;
+    }
     std::ostringstream cmd;
     // utun is point-to-point; set dstaddr same as local to satisfy ifconfig
     cmd << "/sbin/ifconfig " << name_ << " " << ip << " " << ip
@@ -195,6 +222,14 @@ public:
     const int prefix = maskToPrefix(netmask);
     const std::string cidr =
         prefix > 0 ? network + "/" + std::to_string(prefix) : network;
+    if (usingHelper_) {
+      std::string error;
+      if (!helperAddRoute(network, netmask, name_, &error)) {
+        lastError_ = error.empty() ? "Helper add_route failed" : error;
+        return false;
+      }
+      return true;
+    }
     // Point the subnet at this utun interface; best effort.
     std::ostringstream cmd;
     cmd << "/sbin/route -n add -net " << cidr << " -interface " << name_;
@@ -217,6 +252,15 @@ public:
       lastError_ = "Interface not open";
       return false;
     }
+    if (usingHelper_) {
+      std::string error;
+      if (!helperSetMtu(name_, mtu, &error)) {
+        lastError_ = error.empty() ? "Helper set_mtu failed" : error;
+        return false;
+      }
+      mtu_ = mtu;
+      return true;
+    }
     std::ostringstream cmd;
     cmd << "/sbin/ifconfig " << name_ << " mtu " << mtu;
     if (::system(cmd.str().c_str()) != 0) {
@@ -231,6 +275,14 @@ public:
     if (!is_open()) {
       lastError_ = "Interface not open";
       return false;
+    }
+    if (usingHelper_) {
+      std::string error;
+      if (!helperSetUp(name_, up, &error)) {
+        lastError_ = error.empty() ? "Helper set_up failed" : error;
+        return false;
+      }
+      return true;
     }
     std::ostringstream cmd;
     cmd << "/sbin/ifconfig " << name_ << (up ? " up" : " down");
@@ -266,6 +318,7 @@ private:
   std::string name_;
   std::string lastError_;
   int mtu_;
+  bool usingHelper_;
 };
 
 std::unique_ptr<TunInterface> create_tun() {
