@@ -5,7 +5,7 @@
 
 ![warning](https://i.imgur.com/TxCC3c4.png) 使用可能会导致账号被
 [ban](https://store.steampowered.com/subscriber_agreement/Steam#2)，若要使用本项目建议用小号，但
-online-fix 跟本项目同原理使用 Steam 网络进行联机，从 2017 年开始传播，峰值日火
+online-fix 跟本项目同原理使用 Steam 网络进行联机，从 2017 年开始传播，峰值日活
 13w 仍未被 Valve 封禁。Use at your own risk!
 
 connecttool-qt 是一款基于 connecttool
