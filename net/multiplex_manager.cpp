@@ -7,11 +7,10 @@
 
 namespace {
 // Keep chunks close to path MTU to reduce Steam UDP fragmentation/lock pressure
-constexpr std::size_t kTunnelChunkBytes =
-    1100; // slightly larger chunks to reduce fragment count
-constexpr std::size_t kSendBufferBytes = 8 * 1024 * 1024;
-constexpr std::size_t kHighWaterBytes = 512 * 1024; // tighter throttling
-constexpr std::size_t kLowWaterBytes = 256 * 1024;
+constexpr std::size_t kTunnelChunkBytes = 16384; // 增大单包大小，减少封包碎片和CPU开销 (Steam 限制单包约 512KB)
+constexpr std::size_t kSendBufferBytes = 32 * 1024 * 1024;
+constexpr std::size_t kHighWaterBytes = 8 * 1024 * 1024; // 提升高水位线到 8MB，防止高速传输时频繁触发流控阻塞
+constexpr std::size_t kLowWaterBytes = 4 * 1024 * 1024;  // 提升低水位线到 4MB
 
 // Simple, local ID generator to avoid pulling in the full nanoid dependency
 std::string generateId(std::size_t length = 6) {
