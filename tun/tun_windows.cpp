@@ -195,7 +195,7 @@ public:
     }
 
     WintunGetAdapterLUID(adapter_, &adapterLuid_);
-    session_ = WintunStartSession(adapter_, 0x400000);
+    session_ = WintunStartSession(adapter_, 0x1000000);
     if (!session_) {
       setWindowsError("Failed to start WinTUN session");
       WintunCloseAdapter(adapter_);
