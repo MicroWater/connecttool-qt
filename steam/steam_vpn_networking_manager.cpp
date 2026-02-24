@@ -24,23 +24,24 @@ bool SteamVpnNetworkingManager::initialize() {
     return false;
   }
 
-  // Align bandwidth/Nagle settings with the Qt TCP mode defaults
-  int32 sendBufferSize = 2 * 1024 * 1024;
+  int32 sendBufferSize = 16 * 1024 * 1024; // 增大到 16MB
   SteamNetworkingUtils()->SetConfigValue(
       k_ESteamNetworkingConfig_SendBufferSize, k_ESteamNetworkingConfig_Global,
       0, k_ESteamNetworkingConfig_Int32, &sendBufferSize);
 
-  int32 recvBufferSize = 2 * 1024 * 1024;
+  int32 recvBufferSize = 16 * 1024 * 1024; // 增大到 16MB
   SteamNetworkingUtils()->SetConfigValue(
       k_ESteamNetworkingConfig_RecvBufferSize, k_ESteamNetworkingConfig_Global,
       0, k_ESteamNetworkingConfig_Int32, &recvBufferSize);
-  int32 recvBufferMsgs = 2048;
+
+  int32 recvBufferMsgs = 16384; // 增大允许的消息队列数
   SteamNetworkingUtils()->SetConfigValue(
       k_ESteamNetworkingConfig_RecvBufferMessages,
       k_ESteamNetworkingConfig_Global, 0, k_ESteamNetworkingConfig_Int32,
       &recvBufferMsgs);
 
-  int32 sendRate = 1024 * 1024;
+  // 解除带宽速率限制（设置为 0 代表由 Steam 动态控制，或设置为极大的值如 1GB/s）
+  int32 sendRate = 0; // 或者使用 1024 * 1024 * 1024 (1GB/s)
   SteamNetworkingUtils()->SetConfigValue(
       k_ESteamNetworkingConfig_SendRateMin, k_ESteamNetworkingConfig_Global, 0,
       k_ESteamNetworkingConfig_Int32, &sendRate);
