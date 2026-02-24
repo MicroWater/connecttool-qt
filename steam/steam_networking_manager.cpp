@@ -54,25 +54,24 @@ bool SteamNetworkingManager::initialize() {
       k_ESteamNetworkingConfig_Global, 0, k_ESteamNetworkingConfig_Int32,
       &logLevel);
 
-  // Increase default reliable send buffer to better handle large bursts
-  int32 sendBufferSize = 2 * 1024 * 1024;
+  int32 sendBufferSize = 16 * 1024 * 1024; // 增大到 16MB
   SteamNetworkingUtils()->SetConfigValue(
       k_ESteamNetworkingConfig_SendBufferSize, k_ESteamNetworkingConfig_Global,
       0, k_ESteamNetworkingConfig_Int32, &sendBufferSize);
 
-  // Receive buffers tuned for moderate bandwidth to avoid runaway queues
-  int32 recvBufferSize = 2 * 1024 * 1024; // 2 MB
+  int32 recvBufferSize = 16 * 1024 * 1024; // 增大到 16MB
   SteamNetworkingUtils()->SetConfigValue(
       k_ESteamNetworkingConfig_RecvBufferSize, k_ESteamNetworkingConfig_Global,
       0, k_ESteamNetworkingConfig_Int32, &recvBufferSize);
-  int32 recvBufferMsgs = 2048;
+
+  int32 recvBufferMsgs = 16384; // 增大允许的消息队列数
   SteamNetworkingUtils()->SetConfigValue(
       k_ESteamNetworkingConfig_RecvBufferMessages,
       k_ESteamNetworkingConfig_Global, 0, k_ESteamNetworkingConfig_Int32,
       &recvBufferMsgs);
 
-  // Cap send rate to a conservative value to keep reliable window stable
-  int32 sendRate = 1024 * 1024; // ~1000 KB/s
+  // 解除带宽速率限制
+  int32 sendRate = 0; // 或者使用 1024 * 1024 * 1024 (1GB/s)
   SteamNetworkingUtils()->SetConfigValue(
       k_ESteamNetworkingConfig_SendRateMin, k_ESteamNetworkingConfig_Global, 0,
       k_ESteamNetworkingConfig_Int32, &sendRate);
